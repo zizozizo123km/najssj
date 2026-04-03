@@ -1,0 +1,114 @@
+import { motion } from 'motion/react';
+import { BookOpen, CheckCircle, Lightbulb, Clock, Save, Star } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+interface VideoSummaryProps {
+  summary: {
+    summary: string;
+    keyPoints: string[];
+    importantNotes: string[];
+    timestamps?: { time: string; topic: string }[];
+  };
+  onSave: () => void;
+  onRate: (rating: number) => void;
+  rating: number;
+}
+
+export default function VideoSummary({ summary, onSave, onRate, rating }: VideoSummaryProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-8"
+    >
+      {/* Header Actions */}
+      <div className="flex items-center justify-between border-b pb-4">
+        <div className="flex items-center gap-2 text-blue-600">
+          <BookOpen size={24} />
+          <h2 className="text-xl font-bold">التحليل التعليمي</h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                onClick={() => onRate(star)}
+                className={`transition-colors ${star <= rating ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-200'}`}
+              >
+                <Star size={18} fill={star <= rating ? 'currentColor' : 'none'} />
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onSave}
+            className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-blue-100 transition-colors"
+          >
+            <Save size={18} />
+            <span>حفظ في ملاحظاتي</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-900 font-bold">
+          <CheckCircle size={20} className="text-green-500" />
+          <h3>ملخص الدرس</h3>
+        </div>
+        <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-xl">
+          <ReactMarkdown>{summary.summary}</ReactMarkdown>
+        </div>
+      </section>
+
+      {/* Key Points */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-900 font-bold">
+          <Lightbulb size={20} className="text-yellow-500" />
+          <h3>النقاط الأساسية</h3>
+        </div>
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {summary.keyPoints.map((point, i) => (
+            <li key={i} className="flex items-start gap-2 bg-blue-50/50 p-3 rounded-lg text-sm text-gray-800 border border-blue-100">
+              <span className="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 font-bold">{i + 1}</span>
+              {point}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Important Notes for Bac */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-900 font-bold">
+          <Star size={20} className="text-red-500" />
+          <h3>ملاحظات هامة للبكالوريا</h3>
+        </div>
+        <div className="bg-red-50 border-r-4 border-red-500 p-4 rounded-l-xl space-y-2">
+          {summary.importantNotes.map((note, i) => (
+            <p key={i} className="text-sm text-red-800 font-medium flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0" />
+              {note}
+            </p>
+          ))}
+        </div>
+      </section>
+
+      {/* Timestamps */}
+      {summary.timestamps && summary.timestamps.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 text-gray-900 font-bold">
+            <Clock size={20} className="text-indigo-500" />
+            <h3>أهم اللحظات في الفيديو</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {summary.timestamps.map((ts, i) => (
+              <div key={i} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-100">
+                <span className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[10px]">{ts.time}</span>
+                {ts.topic}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </motion.div>
+  );
+}
