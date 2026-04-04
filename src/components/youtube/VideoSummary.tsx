@@ -1,10 +1,12 @@
 import { motion } from 'motion/react';
-import { BookOpen, CheckCircle, Lightbulb, Clock, Save, Star } from 'lucide-react';
+import { BookOpen, CheckCircle, Lightbulb, Clock, Save, Star, BrainCircuit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface VideoSummaryProps {
   summary: {
     summary: string;
+    clarifications: string[];
+    boardExplanation: string;
     keyPoints: string[];
     importantNotes: string[];
     timestamps?: { time: string; topic: string }[];
@@ -58,6 +60,33 @@ export default function VideoSummary({ summary, onSave, onRate, rating }: VideoS
         <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-xl">
           <ReactMarkdown>{summary.summary}</ReactMarkdown>
         </div>
+      </section>
+
+      {/* Board Explanation */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-900 font-bold">
+          <BrainCircuit size={20} className="text-blue-500" />
+          <h3>شرح السبورة</h3>
+        </div>
+        <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed bg-blue-50 p-4 rounded-xl border border-blue-100">
+          <ReactMarkdown>{summary.boardExplanation}</ReactMarkdown>
+        </div>
+      </section>
+
+      {/* Clarifications */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-900 font-bold">
+          <Lightbulb size={20} className="text-purple-500" />
+          <h3>توضيحات إضافية</h3>
+        </div>
+        <ul className="space-y-2">
+          {summary.clarifications.map((clarification, i) => (
+            <li key={i} className="flex items-start gap-2 bg-purple-50/50 p-3 rounded-lg text-sm text-gray-800 border border-purple-100">
+              <span className="bg-purple-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 font-bold">{i + 1}</span>
+              {clarification}
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* Key Points */}

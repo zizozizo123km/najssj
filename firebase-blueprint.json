@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Extended user profile data stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "User's full name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "URL to user's avatar" },
+        "branch": { "type": "string", "description": "Academic branch (e.g., Science, Math)" },
+        "favoriteSubjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of favorite subjects"
+        },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "savedSummaries": { "type": "integer", "description": "Number of saved summaries" },
+            "analyzedVideos": { "type": "integer", "description": "Number of analyzed videos" },
+            "completedQuizzes": { "type": "integer", "description": "Number of completed quizzes" },
+            "successRate": { "type": "number", "description": "Average success rate percentage" }
+          }
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string", "enum": ["video", "quiz", "summary", "post"] },
+              "title": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "score": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["email"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A feed post created by a user.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["video", "book", "post"] },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "author": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "thumbnail": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["type", "title", "content", "author", "authorId", "createdAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "A like on a post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["postId", "userId", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "author": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["postId", "userId", "author", "content", "createdAt"]
+    },
+    "QuizSession": {
+      "title": "Quiz Session",
+      "description": "A quiz session completed by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "score": { "type": "integer" },
+        "totalQuestions": { "type": "integer" },
+        "subject": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "userName", "score", "totalQuestions", "subject", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents indexed by their Firebase Auth UID."
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Feed posts created by users."
+    },
+    "/posts/{postId}/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Likes on a post."
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments on a post."
+    },
+    "/quizSessions/{sessionId}": {
+      "schema": "QuizSession",
+      "description": "Completed quiz sessions for leaderboard."
+    }
+  }
+}

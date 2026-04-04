@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, Mail, Lock, Bell, BookOpen, Save, X } from 'lucide-react';
+import { User, Mail, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles } from 'lucide-react';
+import AvatarGallery from './AvatarGallery';
+import { BAC_BRANCHES, BAC_SUBJECTS } from '../../data/baccalaureate';
 
 interface SettingsFormProps {
   user: {
     displayName: string | null;
     email: string | null;
+    photoURL: string | null;
     branch: string;
     favoriteSubjects: string[];
   };
@@ -13,14 +16,12 @@ interface SettingsFormProps {
   onCancel: () => void;
 }
 
-const BRANCHES = ['علوم تجريبية', 'رياضيات', 'تقني رياضي', 'تسيير واقتصاد', 'لغات أجنبية', 'آداب وفلسفة'];
-const SUBJECTS = ['رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 'تربية إسلامية', 'فلسفة', 'لغة ألمانية'];
-
 export default function SettingsForm({ user, onSave, onCancel }: SettingsFormProps) {
   const [formData, setFormData] = useState({
     displayName: user.displayName || '',
     email: user.email || '',
-    branch: user.branch || BRANCHES[0],
+    photoURL: user.photoURL || '',
+    branch: user.branch || BAC_BRANCHES[0].id,
     favoriteSubjects: user.favoriteSubjects || [],
     notifications: true,
   });
@@ -33,6 +34,8 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
         : [...prev.favoriteSubjects, subject]
     }));
   };
+
+  const currentSubjects = BAC_SUBJECTS[formData.branch] || [];
 
   return (
     <motion.div
@@ -48,6 +51,17 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
       </div>
 
       <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+        {/* Avatar Selection */}
+        <div className="space-y-4">
+          <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+            <ImageIcon size={16} className="text-blue-500" /> اختر صورة الملف الشخصي
+          </label>
+          <AvatarGallery 
+            selectedAvatar={formData.photoURL} 
+            onSelect={(url) => setFormData({ ...formData, photoURL: url })} 
+          />
+        </div>
+
         {/* Basic Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
@@ -81,10 +95,10 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           </label>
           <select 
             value={formData.branch}
-            onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, branch: e.target.value, favoriteSubjects: [] })}
             className="w-full p-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-white"
           >
-            {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+            {BAC_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
           </select>
         </div>
 
@@ -94,18 +108,18 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
             <Sparkles size={16} className="text-orange-500" /> المواد المفضلة
           </label>
           <div className="flex flex-wrap gap-2">
-            {SUBJECTS.map(s => (
+            {currentSubjects.map(s => (
               <button
-                key={s}
+                key={s.id}
                 type="button"
-                onClick={() => toggleSubject(s)}
+                onClick={() => toggleSubject(s.name)}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                  formData.favoriteSubjects.includes(s)
+                  formData.favoriteSubjects.includes(s.name)
                     ? 'bg-blue-600 text-white border-blue-500 shadow-md'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-blue-200'
                 }`}
               >
-                {s}
+                {s.name}
               </button>
             ))}
           </div>
@@ -153,13 +167,3 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     </motion.div>
   );
 }
-
-const Sparkles = ({ size, className }: { size: number, className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-    <path d="M5 3v4" />
-    <path d="M19 17v4" />
-    <path d="M3 5h4" />
-    <path d="M17 19h4" />
-  </svg>
-);

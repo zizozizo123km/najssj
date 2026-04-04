@@ -80,19 +80,21 @@ export default function YouTubeVideoAnalyzer() {
 
     try {
       const prompt = `Analyze this YouTube video for a Baccalaureate student in Algeria.
-        IMPORTANT: Use the Algerian Arabic dialect (Darija) for the summary and notes to make it feel like a local tutor is explaining, but keep technical terms and educational content accurate for the Algerian Baccalaureate.
+        IMPORTANT: Focus strictly on the academic content of the lesson. Provide a clear, structured, and concise summary of the lesson content itself. Avoid narrative style or mimicking a teacher's speech. Use technical terms and educational content accurate for the Algerian Baccalaureate.
         
         Title: ${video.title}
         Description: ${video.description}
         Channel: ${video.channelTitle}
         
         Provide:
-        1. A short educational summary in Algerian Darija (max 3 paragraphs).
-        2. Key points (array of strings in Algerian Darija).
-        3. Important notes for Bac students (array of strings in Algerian Darija).
-        4. Timestamps of important moments (array of objects with 'time' and 'topic' in Arabic).
+        1. A structured summary of the lesson content (max 3 paragraphs), focusing on the core academic concepts, definitions, and rules.
+        2. Clear clarifications (توضيحات) for complex points or common student misconceptions (array of strings).
+        3. A detailed breakdown of the content likely written on the board (e.g., equations, diagrams, key definitions) and explain it technically and clearly.
+        4. Key points (array of strings).
+        5. Important notes for Bac students (array of strings).
+        6. Timestamps of important moments (array of objects with 'time' and 'topic' in Arabic).
         
-        Return as JSON with keys: summary, keyPoints, importantNotes, timestamps.`;
+        Return as JSON with keys: summary, clarifications, boardExplanation, keyPoints, importantNotes, timestamps.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -100,7 +102,20 @@ export default function YouTubeVideoAnalyzer() {
         config: { responseMimeType: "application/json" }
       });
 
-      setAnalysis(JSON.parse(response.text || '{}'));
+      const responseText = response.text || '{}';
+      const firstBrace = responseText.indexOf('{');
+      const lastBrace = responseText.lastIndexOf('}');
+      
+      let cleanJson = responseText;
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanJson = responseText.substring(firstBrace, lastBrace + 1);
+      }
+      
+      try {
+        setAnalysis(JSON.parse(cleanJson));
+      } catch (e) {
+        setAnalysis(JSON.parse(responseText));
+      }
     } catch (error) {
       console.error("Analysis error:", error);
     } finally {
@@ -124,7 +139,7 @@ export default function YouTubeVideoAnalyzer() {
         - 2 True/False Questions
         - 1 Short Answer Question
         
-        Return as JSON array of objects with keys: id, type ('mcq', 'true-false', 'short-answer'), question, options (for mcq), correctAnswer, explanation.`;
+        Return ONLY a JSON array of objects with keys: id, type ('mcq', 'true-false', 'short-answer'), question, options (for mcq), correctAnswer, explanation. Do not include any other text.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -132,7 +147,20 @@ export default function YouTubeVideoAnalyzer() {
         config: { responseMimeType: "application/json" }
       });
 
-      setQuiz(JSON.parse(response.text || '[]'));
+      const responseText = response.text || '[]';
+      const firstBracket = responseText.indexOf('[');
+      const lastBracket = responseText.lastIndexOf(']');
+      
+      let cleanJson = responseText;
+      if (firstBracket !== -1 && lastBracket !== -1) {
+        cleanJson = responseText.substring(firstBracket, lastBracket + 1);
+      }
+      
+      try {
+        setQuiz(JSON.parse(cleanJson));
+      } catch (e) {
+        setQuiz(JSON.parse(responseText));
+      }
       setShowQuiz(true);
     } catch (error) {
       console.error("Quiz generation error:", error);

@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
+import { signOut, updateProfile } from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  onSnapshot,
+  getDocFromServer
+} from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LogOut, 
@@ -13,13 +21,65 @@ import {
   Zap, 
   Target,
   Settings as SettingsIcon,
-  ChevronLeft
+  Calendar,
 } from 'lucide-react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
+import ProgressCard from '../components/profile/ProgressCard';
 import ActivityList from '../components/profile/ActivityList';
 import SettingsForm from '../components/profile/SettingsForm';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 interface UserProfile {
   displayName: string | null;
@@ -41,37 +101,64 @@ export default function Profile() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [studyPlan, setStudyPlan] = useState<any>(null);
 
   useEffect(() => {
-    // Simulate fetching user data
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const savedPlan = localStorage.getItem('studyPlan');
+    if (savedPlan) setStudyPlan(JSON.parse(savedPlan));
+    
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       if (currentUser) {
-        setUser({
-          displayName: currentUser.displayName,
-          email: currentUser.email,
-          photoURL: currentUser.photoURL,
-          branch: 'علوم تجريبية',
-          favoriteSubjects: ['رياضيات', 'فيزياء'],
-          stats: {
-            savedSummaries: 12,
-            analyzedVideos: 25,
-            completedQuizzes: 48,
-            successRate: 85,
-          },
-          activities: [
-            { id: '1', type: 'video', title: 'تحليل فيديو المتتاليات الحسابية', date: '2024-03-20' },
-            { id: '2', type: 'quiz', title: 'اختبار الفيزياء: الميكانيك', date: '2024-03-19', score: '18/20' },
-            { id: '3', type: 'summary', title: 'ملخص درس الفلسفة: السؤال والمشكلة', date: '2024-03-18' },
-            { id: '4', type: 'post', title: 'مشاركة نصيحة حول تنظيم الوقت', date: '2024-03-17' },
-          ]
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        
+        const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUser(docSnap.data() as UserProfile);
+          } else {
+            const initialData: UserProfile = {
+              displayName: currentUser.displayName || null,
+              email: currentUser.email || null,
+              photoURL: currentUser.photoURL || null,
+              branch: 'sciences',
+              favoriteSubjects: ['الرياضيات', 'الفيزياء'],
+              stats: {
+                savedSummaries: 0,
+                analyzedVideos: 0,
+                completedQuizzes: 0,
+                successRate: 0,
+              },
+              activities: []
+            };
+            
+            setDoc(userDocRef, initialData).catch(err => {
+              handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`);
+            });
+            setUser(initialData);
+          }
+          setLoading(false);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
         });
+
+        return () => unsubscribeDoc();
       } else {
         navigate('/login');
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -79,11 +166,26 @@ export default function Profile() {
     navigate('/login');
   };
 
-  const handleSaveSettings = (newData: any) => {
-    if (user) {
-      setUser({ ...user, ...newData });
-      setIsEditing(false);
-      alert('تم تحديث الملف الشخصي بنجاح!');
+  const handleSaveSettings = async (newData: any) => {
+    if (user && auth.currentUser) {
+      try {
+        await updateProfile(auth.currentUser, {
+          displayName: newData.displayName,
+          photoURL: newData.photoURL
+        });
+
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userDocRef, {
+          displayName: newData.displayName || null,
+          photoURL: newData.photoURL || null,
+          branch: newData.branch || null,
+          favoriteSubjects: newData.favoriteSubjects || []
+        });
+
+        setIsEditing(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
+      }
     }
   };
 
@@ -123,7 +225,6 @@ export default function Profile() {
             exit={{ opacity: 0 }}
             className="space-y-8"
           >
-            {/* Header */}
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-black text-gray-900">الملف الشخصي</h1>
               <div className="flex items-center gap-3">
@@ -143,26 +244,42 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Profile Info */}
             <ProfileHeader user={user} onEdit={() => setIsEditing(true)} />
 
-            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ProgressCard label="الاختبارات المكتملة" current={user.stats.completedQuizzes} total={50} icon={HelpCircle} color="bg-orange-500" delay={0.1} />
+              <ProgressCard label="الفيديوهات المحللة" current={user.stats.analyzedVideos} total={50} icon={Video} color="bg-red-500" delay={0.2} />
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatsCard label="ملخصات محفوظة" value={user.stats.savedSummaries} icon={Bookmark} color="bg-blue-500" delay={0.1} />
-              <StatsCard label="فيديوهات محللة" value={user.stats.analyzedVideos} icon={Video} color="bg-red-500" delay={0.2} />
-              <StatsCard label="اختبارات مكتملة" value={user.stats.completedQuizzes} icon={HelpCircle} color="bg-orange-500" delay={0.3} />
+              <StatsCard label="ملخصات محفوظة" value={user.stats.savedSummaries} icon={Bookmark} color="bg-blue-500" delay={0.3} />
               <StatsCard label="نسبة النجاح" value={`${user.stats.successRate}%`} icon={TrendingUp} color="bg-green-500" delay={0.4} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Left Column: Activities */}
-              <div className="lg:col-span-8">
+              <div className="lg:col-span-8 space-y-8">
                 <ActivityList activities={user.activities} />
+                
+                {studyPlan && (
+                  <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-4">
+                    <h3 className="font-bold text-gray-900 flex items-center gap-2 border-b pb-3">
+                      <Calendar size={20} className="text-blue-500" />
+                      My Study Plan
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {studyPlan.map((day: any, i: number) => (
+                        <div key={i} className="bg-gray-50 p-4 rounded-xl space-y-2">
+                          <h4 className="font-bold text-gray-900">{day.day}</h4>
+                          {day.slots.map((slot: any, j: number) => (
+                            <p key={j} className="text-xs text-gray-600">{slot.time}: {slot.subject}</p>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Right Column: Badges & Motivation */}
               <div className="lg:col-span-4 space-y-6">
-                {/* Badges */}
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-4">
                   <h3 className="font-bold text-gray-900 flex items-center gap-2 border-b pb-3">
                     <Award size={20} className="text-yellow-500" />
@@ -191,7 +308,6 @@ export default function Profile() {
                   <button className="w-full text-xs text-blue-600 font-bold hover:underline pt-2">عرض كل الأوسمة</button>
                 </div>
 
-                {/* Motivation Card */}
                 <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 shadow-xl text-white space-y-4 relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
                   <div className="relative space-y-2">
