@@ -44,14 +44,24 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
+    match /admin_settings/general {
+      allow read: if true; // Allow public read for maintenance mode
+      allow write: if isAdmin();
+    }
+
     match /admin_settings/{document=**} {
-      allow read: if isAuthenticated(); // Allow all users to read settings like maintenance mode
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     match /users/{userId} {
-      // Users can read their own profile. Admins can read all profiles.
-      allow read: if isOwner(userId) || isAdmin();
+      // Anyone authenticated can read profiles (needed for chat)
+      allow read: if isAuthenticated();
 
       // Users can create their own profile.
       allow create: if isOwner(userId);
