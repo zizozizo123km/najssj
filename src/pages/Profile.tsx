@@ -124,7 +124,21 @@ export default function Profile() {
         
         const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUser(docSnap.data() as UserProfile);
+            const data = docSnap.data();
+            setUser({
+              displayName: data.displayName || currentUser.displayName || null,
+              email: data.email || currentUser.email || null,
+              photoURL: data.photoURL || currentUser.photoURL || null,
+              branch: data.branch || 'علوم تجريبية',
+              favoriteSubjects: data.favoriteSubjects || ['الرياضيات', 'الفيزياء'],
+              stats: data.stats || {
+                savedSummaries: 0,
+                analyzedVideos: 0,
+                completedQuizzes: 0,
+                successRate: 0,
+              },
+              activities: data.activities || []
+            });
           } else {
             const initialData: UserProfile = {
               displayName: currentUser.displayName || null,
