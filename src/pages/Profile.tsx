@@ -21,34 +21,6 @@ import ProgressCard from '../components/profile/ProgressCard';
 import ActivityList from '../components/profile/ActivityList';
 import SettingsForm from '../components/profile/SettingsForm';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-    tenantId: string | null | undefined;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
-
 interface UserProfile {
   displayName: string | null;
   email: string | null;
@@ -74,7 +46,13 @@ export default function Profile() {
 
   function handleSupabaseError(error: any) {
     console.error('Supabase Error: ', error);
-    setError("حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة مرة أخرى.");
+    if (error?.message?.includes('fetch') || error?.message?.includes('Network')) {
+      setError("تعذر الاتصال بقاعدة البيانات. يرجى التأكد من إعدادات VITE_SUPABASE_URL.");
+    } else if (error?.code === 'PGRST116' || error?.message?.includes('relation')) {
+      setError("يبدو أن بعض الجداول ناقصة في قاعدة البيانات. يرجى تشغيل كود SQL.");
+    } else {
+      setError("حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة مرة أخرى.");
+    }
   }
 
   useEffect(() => {
