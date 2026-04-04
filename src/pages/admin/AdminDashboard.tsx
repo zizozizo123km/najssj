@@ -32,12 +32,16 @@ export default function AdminDashboard() {
       const users = snapshot.docs.map(doc => doc.data()).filter(u => u.role !== 'admin');
       setStats(prev => ({ ...prev, totalStudents: users.length }));
       // In a real app, calculate active today based on lastLogin field
+    }, (error) => {
+      console.error("Error fetching users:", error);
     });
 
     // Listen to notifications
     const qNotif = query(collection(db, 'notifications'));
     const unsubscribeNotif = onSnapshot(qNotif, (snapshot) => {
       setStats(prev => ({ ...prev, notificationsSent: snapshot.size }));
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
     });
 
     // Listen to general settings
@@ -48,6 +52,8 @@ export default function AdminDashboard() {
           appStatus: docSnap.data().maintenanceMode ? 'صيانة' : 'مفتوح' 
         }));
       }
+    }, (error) => {
+      console.error("Error fetching settings:", error);
     });
 
     return () => {

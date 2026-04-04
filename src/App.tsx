@@ -75,6 +75,8 @@ export default function App() {
       if (docSnap.exists()) {
         setIsMaintenance(docSnap.data().maintenanceMode || false);
       }
+    }, (error) => {
+      console.error("Error fetching settings:", error);
     });
 
     return () => {

@@ -19,6 +19,8 @@ export default function StudentTable() {
         .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
         .filter(user => user.role !== 'admin');
       setStudents(usersData);
+    }, (error) => {
+      console.error("Error fetching students:", error);
     });
     return () => unsubscribe();
   }, []);

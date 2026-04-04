@@ -34,6 +34,8 @@ export default function Quiz() {
     const q = query(collection(db, 'quizSessions'), orderBy('score', 'desc'), limit(3));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLeaderboard(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Error fetching leaderboard:", error);
     });
     return () => unsubscribe();
   }, []);

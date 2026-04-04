@@ -43,6 +43,8 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
         const myLike = snapshot.docs.find(d => d.data().userId === auth.currentUser?.uid);
         setIsLikedByMe(!!myLike);
       }
+    }, (error) => {
+      console.error("Error fetching likes:", error);
     });
 
     // Listen to comments
@@ -50,6 +52,8 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
     const q = query(commentsRef, orderBy('createdAt', 'asc'));
     const unsubscribeComments = onSnapshot(q, (snapshot) => {
       setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      console.error("Error fetching comments:", error);
     });
 
     return () => {

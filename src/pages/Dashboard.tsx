@@ -17,21 +17,30 @@ export default function Dashboard() {
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setFeed(postsData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching posts:", error);
-      setLoading(false);
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+        
+        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+          const postsData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setFeed(postsData);
+          setLoading(false);
+        }, (error) => {
+          console.error("Error fetching posts:", error);
+          setLoading(false);
+        });
+
+        return () => unsubscribeSnapshot();
+      } else {
+        setFeed([]);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const handleCreatePost = (newPost: any) => {
