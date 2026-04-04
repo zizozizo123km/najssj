@@ -26,8 +26,35 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      setError('يرجى إدخال البريد الإلكتروني أولاً.');
+      return;
+    }
+    setResending(true);
+    setError('');
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+      if (error) {
+        if (error.message.includes('email rate limit exceeded')) {
+          throw new Error('تم تجاوز حد إرسال رسائل البريد الإلكتروني. يرجى المحاولة لاحقاً.');
+        }
+        throw error;
+      }
+      setSuccessMessage('تم إعادة إرسال رابط التأكيد بنجاح. يرجى التحقق من بريدك الإلكتروني.');
+    } catch (err: any) {
+      setError(err.message || 'فشل إعادة إرسال رابط التأكيد.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +155,16 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       </div>
 
       <ErrorMessage message={error} />
+      
+      {error.includes('تأكيد بريدك الإلكتروني') && (
+        <button
+          onClick={handleResendConfirmation}
+          disabled={resending}
+          className="w-full mt-2 text-sm font-bold text-blue-600 hover:underline disabled:opacity-50"
+        >
+          {resending ? 'جاري الإرسال...' : 'إعادة إرسال رابط التأكيد'}
+        </button>
+      )}
       
       {successMessage && (
         <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-green-700 text-sm font-bold text-center">
