@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, BookOpen } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
 import Loader from './Loader';
 import ErrorMessage from './ErrorMessage';
 
@@ -10,10 +11,20 @@ interface LoginFormProps {
   onSuccess: () => void;
 }
 
+const BRANCHES = [
+  'علوم تجريبية',
+  'رياضيات',
+  'تقني رياضي',
+  'تسيير واقتصاد',
+  'آداب وفلسفة',
+  'لغات أجنبية'
+];
+
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [branch, setBranch] = useState(BRANCHES[0]);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,7 +37,16 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Save additional user data to Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          email: email,
+          branch: branch,
+          role: 'student',
+          accountStatus: 'active',
+          createdAt: Date.now(),
+          lastLogin: Date.now()
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -94,6 +114,24 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             required
           />
         </div>
+
+        {isRegistering && (
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+              <BookOpen size={16} className="text-blue-500" /> الشعبة
+            </label>
+            <select
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              className="w-full p-4 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-right bg-white"
+              required
+            >
+              {BRANCHES.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="text-sm font-bold text-gray-700 flex items-center gap-2">

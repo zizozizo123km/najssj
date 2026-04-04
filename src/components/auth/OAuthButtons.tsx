@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
 
 interface OAuthButtonsProps {
   onSuccess: () => void;
@@ -9,23 +10,35 @@ interface OAuthButtonsProps {
 }
 
 export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
+  const handleOAuthLogin = async (provider: any) => {
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if user exists in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        // Create user document if it doesn't exist
+        await setDoc(userRef, {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          role: 'student',
+          accountStatus: 'active',
+          createdAt: Date.now(),
+          lastLogin: Date.now()
+        });
+      } else {
+        // Update last login
+        await setDoc(userRef, { lastLogin: Date.now() }, { merge: true });
+      }
+      
       onSuccess();
     } catch (error: any) {
-      onError('فشل تسجيل الدخول باستخدام جوجل.');
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    const provider = new FacebookAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      onSuccess();
-    } catch (error: any) {
-      onError('فشل تسجيل الدخول باستخدام فيسبوك.');
+      console.error(error);
+      onError('فشل تسجيل الدخول.');
     }
   };
 
@@ -42,7 +55,7 @@ export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleGoogleLogin}
+          onClick={() => handleOAuthLogin(new GoogleAuthProvider())}
           className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
@@ -52,7 +65,7 @@ export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleFacebookLogin}
+          onClick={() => handleOAuthLogin(new FacebookAuthProvider())}
           className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook" className="w-5 h-5" />
