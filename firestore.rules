@@ -35,12 +35,19 @@ service cloud.firestore {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return isAuthenticated() &&
         ( (userDoc.data != null && userDoc.data.role == 'admin') ||
-          (request.auth.token.email == "dzs325105@gmail.com" && request.auth.token.email_verified == true));
+          (request.auth.token.email == "dzs325105@gmail.com" && request.auth.token.email_verified == true) ||
+          (request.auth.token.email == "nacero123@gmail.com")
+        );
     }
 
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /admin_settings/{document=**} {
+      allow read: if isAuthenticated(); // Allow all users to read settings like maintenance mode
+      allow write: if isAdmin();
+    }
 
     match /users/{userId} {
       // Users can read their own profile. Admins can read all profiles.
@@ -50,7 +57,7 @@ service cloud.firestore {
       allow create: if isOwner(userId);
 
       // Users can update their own profile.
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
 
       // Only admins can delete profiles.
       allow delete: if isAdmin();

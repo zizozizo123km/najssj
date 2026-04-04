@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Image as ImageIcon, Send, Video, Loader2, ChevronDown } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { uploadFile } from '../../services/uploadService';
 
@@ -9,11 +9,12 @@ interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPostCreated?: (post: any) => void;
+  editPost?: any;
 }
 
 const SUBJECTS = ['رياضيات', 'فيزياء', 'علوم', 'أدب', 'فلسفة', 'لغات', 'أخرى'];
 
-export default function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostModalProps) {
+export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPost }: CreatePostModalProps) {
   const [content, setContent] = useState('');
   const [subject, setSubject] = useState('');
   const [media, setMedia] = useState<File | null>(null);
@@ -24,6 +25,25 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
   const [showSubjects, setShowSubjects] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && editPost) {
+      setContent(editPost.content || '');
+      setSubject(editPost.tags?.[0] || '');
+      setMediaPreview(editPost.thumbnail || null);
+      if (editPost.type === 'video' && editPost.thumbnail && !editPost.thumbnail.includes('cloudinary')) {
+        setVideoUrl(editPost.thumbnail);
+        setShowUrlInput(true);
+      }
+    } else if (isOpen && !editPost) {
+      setContent('');
+      setSubject('');
+      setMedia(null);
+      setMediaPreview(null);
+      setVideoUrl('');
+      setShowUrlInput(false);
+    }
+  }, [isOpen, editPost]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,36 +64,46 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
     setIsSubmitting(true);
 
     try {
-      let thumbnailUrl = null;
-      let isVideoPost = false;
+      let thumbnailUrl = editPost?.thumbnail || null;
+      let isVideoPost = editPost?.type === 'video' || false;
 
       if (media) {
         thumbnailUrl = await uploadFile(media);
         isVideoPost = media.type.startsWith('video');
-      } else if (videoUrl.trim()) {
+      } else if (videoUrl.trim() && videoUrl.trim() !== editPost?.thumbnail) {
         thumbnailUrl = await uploadFile(videoUrl.trim(), 'video');
         isVideoPost = true;
+      } else if (!mediaPreview) {
+        thumbnailUrl = null;
+        isVideoPost = false;
       }
 
-      const newPost = {
+      const postData = {
         type: isVideoPost ? 'video' : 'post',
-        title: subject ? `سؤال في ${subject}` : 'منشور جديد',
+        title: subject ? `سؤال في ${subject}` : 'منشور',
         content,
-        author: auth.currentUser.displayName || 'مستخدم',
-        authorId: auth.currentUser.uid,
-        authorAvatar: auth.currentUser.photoURL || null,
-        date: new Date().toLocaleDateString('ar-EG'),
-        createdAt: Date.now(),
         tags: subject ? [subject] : [],
         thumbnail: thumbnailUrl,
       };
 
-      console.log('Saving post with thumbnail:', typeof thumbnailUrl, thumbnailUrl?.length);
-
-      const docRef = await addDoc(collection(db, 'posts'), newPost);
-
-      if (onPostCreated) {
-        onPostCreated({ id: docRef.id, ...newPost });
+      if (editPost) {
+        await updateDoc(doc(db, 'posts', editPost.id), postData);
+        if (onPostCreated) {
+          onPostCreated({ id: editPost.id, ...editPost, ...postData });
+        }
+      } else {
+        const newPost = {
+          ...postData,
+          author: auth.currentUser.displayName || 'مستخدم',
+          authorId: auth.currentUser.uid,
+          authorAvatar: auth.currentUser.photoURL || null,
+          date: new Date().toLocaleDateString('ar-EG'),
+          createdAt: Date.now(),
+        };
+        const docRef = await addDoc(collection(db, 'posts'), newPost);
+        if (onPostCreated) {
+          onPostCreated({ id: docRef.id, ...newPost });
+        }
       }
       
       // Reset state
@@ -113,7 +143,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
             className="fixed bottom-0 left-0 right-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bg-white rounded-t-3xl md:rounded-3xl p-6 pb-8 z-[60] md:w-full md:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-800">إنشاء منشور جديد</h2>
+              <h2 className="text-xl font-black text-gray-800">{editPost ? 'تعديل المنشور' : 'إنشاء منشور جديد'}</h2>
               <button 
                 onClick={onClose}
                 className="p-2 bg-gray-100 text-gray-500 rounded-full hover:bg-gray-200 transition-colors"
@@ -255,12 +285,12 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }: Crea
                 >
                   {isSubmitting ? (
                     <>
-                      <span>جاري النشر...</span>
+                      <span>{editPost ? 'جاري التعديل...' : 'جاري النشر...'}</span>
                       <Loader2 size={18} className="animate-spin" />
                     </>
                   ) : (
                     <>
-                      <span>نشر</span>
+                      <span>{editPost ? 'تعديل' : 'نشر'}</span>
                       <Send size={18} className="rotate-180" />
                     </>
                   )}

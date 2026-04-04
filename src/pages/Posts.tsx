@@ -2,8 +2,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Award, Filter, Search, Bookmark } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import CreatePost from '../components/posts/CreatePost';
-import PostCard from '../components/posts/PostCard';
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import CreatePostModal from '../components/feed/CreatePostModal';
+import FeedCard from '../components/feed/FeedCard';
+import Loader from '../components/feed/Loader';
 
 const SUBJECTS = [
   'الكل', 'ملاحظاتي', 'رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 
@@ -12,53 +15,31 @@ const SUBJECTS = [
 
 export default function Posts() {
   const location = useLocation();
-  const [posts, setPosts] = useState([
-    { 
-      id: 1, 
-      author: 'أستاذ الرياضيات', 
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=math',
-      content: 'نصائح للتحضير لفرض الرياضيات القادم. ركزوا على المتتاليات الحسابية والهندسية.', 
-      subject: 'رياضيات',
-      time: '10 س', 
-      likes: 1240, 
-      comments: [
-        { id: 1, author: 'تلميذ', text: 'شكراً أستاذ! هل يمكن شرح المتتاليات الهندسية؟', time: '5 س' }
-      ],
-      image: 'https://picsum.photos/seed/math/600/400',
-      youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      liked: false,
-      saved: false
-    },
-    { 
-      id: 2, 
-      author: 'تلميذ مجتهد', 
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=student',
-      content: 'هل يمكن لأحد شرح درس المتتاليات؟ أحتاج لمساعدة في فهم الأساس.', 
-      subject: 'رياضيات',
-      time: '5 س', 
-      likes: 542, 
-      comments: [],
-      image: 'https://picsum.photos/seed/math2/600/400',
-      liked: false,
-      saved: false
-    },
-    { 
-      id: 3, 
-      author: 'أستاذة الفلسفة', 
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=phil',
-      content: 'مقال فلسفي حول السؤال والمشكلة. ركزوا على المنهجية الجدلية.', 
-      subject: 'فلسفة',
-      time: '2 س', 
-      likes: 890, 
-      comments: [],
-      image: 'https://picsum.photos/seed/phil/600/400',
-      liked: true,
-      saved: true
-    },
-  ]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<any>(null);
 
   const [filter, setFilter] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPosts(postsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching posts:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -73,48 +54,39 @@ export default function Posts() {
       const matchesFilter = filter === 'الكل' 
         ? true 
         : filter === 'ملاحظاتي' 
-          ? post.saved 
-          : post.subject === filter;
+          ? post.saved // Note: saved functionality might need real implementation later
+          : post.tags?.includes(filter) || post.subject === filter;
       
-      const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           post.author.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = post.content?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           post.author?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
   }, [posts, filter, searchQuery]);
 
   const trendingPosts = useMemo(() => {
-    return [...posts].sort((a, b) => b.likes - a.likes).slice(0, 3);
+    return [...posts].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0)).slice(0, 3);
   }, [posts]);
 
-  const handleAddPost = (newPost: any) => {
-    setPosts([newPost, ...posts]);
+  const handleDeletePost = async (id: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
+      try {
+        await deleteDoc(doc(db, 'posts', id));
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        alert("حدث خطأ أثناء حذف المنشور.");
+      }
+    }
   };
 
-  const handleLike = (id: number) => {
-    setPosts(posts.map(post => 
-      post.id === id ? { ...post, liked: !post.liked, likes: post.liked ? post.likes - 1 : post.likes + 1 } : post
-    ));
+  const handleEditPost = (id: string) => {
+    const post = posts.find(p => p.id === id);
+    if (post) {
+      setEditingPost(post);
+      setIsCreateModalOpen(true);
+    }
   };
 
-  const handleSave = (id: number) => {
-    setPosts(posts.map(post => 
-      post.id === id ? { ...post, saved: !post.saved } : post
-    ));
-  };
-
-  const handleAddComment = (id: number, text: string) => {
-    setPosts(posts.map(post => 
-      post.id === id ? { 
-        ...post, 
-        comments: [...post.comments, { 
-          id: Date.now(), 
-          author: 'أنت', 
-          text, 
-          time: 'الآن' 
-        }] 
-      } : post
-    ));
-  };
+  if (loading) return <Loader />;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 font-sans bg-gray-50 min-h-screen">
@@ -174,17 +146,37 @@ export default function Posts() {
             </div>
           </div>
 
-          <CreatePost onPost={handleAddPost} />
+          <button 
+            onClick={() => {
+              setEditingPost(null);
+              setIsCreateModalOpen(true);
+            }}
+            className="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:bg-gray-50 transition-colors text-right"
+          >
+            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+              <span className="font-bold">{auth.currentUser?.displayName?.charAt(0) || 'أ'}</span>
+            </div>
+            <span className="text-gray-500 font-medium">بم تفكر؟ شارك أفكارك مع زملائك...</span>
+          </button>
+
+          <CreatePostModal 
+            isOpen={isCreateModalOpen} 
+            onClose={() => {
+              setIsCreateModalOpen(false);
+              setTimeout(() => setEditingPost(null), 300);
+            }} 
+            editPost={editingPost}
+          />
 
           <div className="space-y-6">
             <AnimatePresence mode="popLayout">
               {filteredPosts.map(post => (
-                <PostCard 
+                <FeedCard 
                   key={post.id} 
-                  post={post} 
-                  onLike={handleLike} 
-                  onSave={handleSave}
-                  onAddComment={handleAddComment}
+                  item={post} 
+                  onClick={() => console.log('Open', post.id)}
+                  onDelete={post.authorId === auth.currentUser?.uid ? handleDeletePost : undefined}
+                  onEdit={post.authorId === auth.currentUser?.uid ? handleEditPost : undefined}
                 />
               ))}
             </AnimatePresence>
@@ -225,9 +217,7 @@ export default function Posts() {
                     {post.content}
                   </p>
                   <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
-                    <span>{post.likes} إعجاب</span>
-                    <span>•</span>
-                    <span>{post.comments.length} تعليق</span>
+                    <span>{post.likesCount || 0} إعجاب</span>
                   </div>
                 </div>
               ))}

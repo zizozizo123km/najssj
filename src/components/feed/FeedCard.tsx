@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2 } from 'lucide-react';
+import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send } from 'lucide-react';
+import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, orderBy } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
 import ActionButtons from './ActionButtons';
 
 interface FeedCardProps {
@@ -23,6 +25,80 @@ interface FeedCardProps {
 
 export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [isLikedByMe, setIsLikedByMe] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  useEffect(() => {
+    if (!item.id) return;
+
+    // Listen to likes
+    const likesRef = collection(db, 'posts', item.id, 'likes');
+    const unsubscribeLikes = onSnapshot(likesRef, (snapshot) => {
+      setLikesCount(snapshot.size);
+      if (auth.currentUser) {
+        const myLike = snapshot.docs.find(d => d.data().userId === auth.currentUser?.uid);
+        setIsLikedByMe(!!myLike);
+      }
+    });
+
+    // Listen to comments
+    const commentsRef = collection(db, 'posts', item.id, 'comments');
+    const q = query(commentsRef, orderBy('createdAt', 'asc'));
+    const unsubscribeComments = onSnapshot(q, (snapshot) => {
+      setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => {
+      unsubscribeLikes();
+      unsubscribeComments();
+    };
+  }, [item.id]);
+
+  const handleLike = async () => {
+    if (!auth.currentUser) return alert('يجب تسجيل الدخول أولاً');
+    
+    const likeDocRef = doc(db, 'posts', item.id, 'likes', auth.currentUser.uid);
+    try {
+      if (isLikedByMe) {
+        await deleteDoc(likeDocRef);
+      } else {
+        await setDoc(likeDocRef, {
+          postId: item.id,
+          userId: auth.currentUser.uid,
+          createdAt: Date.now()
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser || !newComment.trim()) return;
+
+    setIsSubmittingComment(true);
+    try {
+      await addDoc(collection(db, 'posts', item.id, 'comments'), {
+        postId: item.id,
+        userId: auth.currentUser.uid,
+        author: auth.currentUser.displayName || 'مستخدم',
+        authorAvatar: auth.currentUser.photoURL || null,
+        content: newComment.trim(),
+        createdAt: Date.now()
+      });
+      setNewComment('');
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      alert('حدث خطأ أثناء إضافة التعليق');
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
 
   return (
     <motion.div
@@ -116,20 +192,29 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
         </h3>
         
         {item.thumbnail && (
-          <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 shadow-inner group-hover:shadow-lg transition-all">
-            <img 
-              src={item.thumbnail} 
-              alt={item.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              referrerPolicy="no-referrer"
-              loading="lazy"
-            />
-            {item.type === 'video' && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
-                <div className="w-14 h-14 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-xl scale-90 group-hover:scale-100 transition-transform">
-                  <Play size={24} className="text-red-600 ml-1" fill="currentColor" />
-                </div>
-              </div>
+          <div 
+            className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 shadow-inner group-hover:shadow-lg transition-all"
+            onClick={(e) => {
+              if (item.type === 'video') {
+                e.stopPropagation(); // Prevent card click when interacting with video
+              }
+            }}
+          >
+            {item.type === 'video' ? (
+              <video 
+                src={item.thumbnail} 
+                className="w-full h-full object-cover"
+                controls
+                preload="metadata"
+              />
+            ) : (
+              <img 
+                src={item.thumbnail} 
+                alt={item.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+              />
             )}
           </div>
         )}
@@ -152,9 +237,64 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
       {/* Actions */}
       <ActionButtons 
         type={item.type}
+        likesCount={likesCount}
+        commentsCount={comments.length}
+        isLiked={isLikedByMe}
+        onLike={handleLike}
+        onComment={() => setShowComments(!showComments)}
         onAnalyze={() => console.log('Analyze', item.id)}
         onTest={() => console.log('Test', item.id)}
       />
+
+      {/* Comments Section */}
+      <AnimatePresence>
+        {showComments && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mt-4 pt-4 border-t border-gray-50"
+          >
+            <div className="space-y-4 mb-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+              {comments.length === 0 ? (
+                <p className="text-center text-sm text-gray-400 font-medium py-4">لا توجد تعليقات بعد. كن أول من يعلق!</p>
+              ) : (
+                comments.map(comment => (
+                  <div key={comment.id} className="flex gap-3">
+                    <img 
+                      src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author}`} 
+                      alt={comment.author}
+                      className="w-8 h-8 rounded-full bg-gray-100 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="flex-1 bg-gray-50 rounded-2xl p-3 rounded-tr-none">
+                      <h5 className="text-xs font-black text-gray-900 mb-1">{comment.author}</h5>
+                      <p className="text-sm text-gray-700 font-medium">{comment.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form onSubmit={handleAddComment} className="flex gap-2">
+              <input 
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="اكتب تعليقاً..."
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+              />
+              <button 
+                type="submit"
+                disabled={!newComment.trim() || isSubmittingComment}
+                className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <Send size={18} className="rotate-180" />
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, Plus, Sparkles, TrendingUp, BookOpen, Video, FileText } from 'lucide-react';
+import { Search, Filter, Plus, Sparkles, TrendingUp, BookOpen, Video, FileText, AlertTriangle, X } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import FeedCard from '../components/feed/FeedCard';
@@ -13,6 +13,8 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<any>(null);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
@@ -37,19 +39,26 @@ export default function Dashboard() {
   };
 
   const handleDeletePost = async (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
-      try {
-        await deleteDoc(doc(db, 'posts', id));
-      } catch (error) {
-        console.error("Error deleting post:", error);
-        alert("حدث خطأ أثناء حذف المنشور.");
-      }
+    setPostToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!postToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postToDelete));
+      setPostToDelete(null);
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      alert("حدث خطأ أثناء حذف المنشور.");
     }
   };
 
   const handleEditPost = (id: string) => {
-    // In a real app, this would open the modal with the post data
-    alert('سيتم إضافة ميزة التعديل قريباً');
+    const post = feed.find(p => p.id === id);
+    if (post) {
+      setEditingPost(post);
+      setIsCreateModalOpen(true);
+    }
   };
 
   const filteredFeed = activeFilter === 'all' 
@@ -144,18 +153,70 @@ export default function Dashboard() {
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => setIsCreateModalOpen(true)}
+        onClick={() => {
+          setEditingPost(null);
+          setIsCreateModalOpen(true);
+        }}
         className="fixed bottom-24 right-6 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-2xl flex items-center justify-center z-40 md:hidden"
       >
         <Plus size={32} />
       </motion.button>
 
-      {/* Create Post Modal */}
+      {/* Create/Edit Post Modal */}
       <CreatePostModal 
         isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setTimeout(() => setEditingPost(null), 300); // Clear after animation
+        }} 
         onPostCreated={handleCreatePost}
+        editPost={editingPost}
       />
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPostToDelete(null)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-3xl p-6 z-[80] shadow-2xl"
+            >
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-2">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl font-black text-gray-900">حذف المنشور</h3>
+                <p className="text-sm text-gray-500 font-medium pb-4">
+                  هل أنت متأكد أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setPostToDelete(null)}
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+                  >
+                    حذف
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
