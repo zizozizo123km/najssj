@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, BookOpen } from 'lucide-react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { supabase } from '../../lib/supabase';
 import Loader from './Loader';
 import ErrorMessage from './ErrorMessage';
 
@@ -29,26 +27,61 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       if (isRegistering) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // Save additional user data to Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          email: email,
-          branch: branch,
-          role: 'student',
-          accountStatus: 'active',
-          createdAt: Date.now(),
-          lastLogin: Date.now()
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: email.split('@')[0], // Default name
+              branch: branch,
+              role: 'student'
+            }
+          }
         });
+        if (error) {
+          if (error.message.includes('email rate limit exceeded')) {
+            throw new Error('تم تجاوز حد إرسال رسائل البريد الإلكتروني. يرجى المحاولة لاحقاً.');
+          }
+          throw error;
+        }
+        
+        if (data.user && data.session) {
+          // User is logged in immediately (email confirmation disabled)
+          onSuccess();
+        } else {
+          // Email confirmation is enabled
+          setSuccessMessage('تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب قبل تسجيل الدخول.');
+          setIsRegistering(false);
+          return;
+        }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        if (error) {
+          if (error.message.includes('Email not confirmed')) {
+            throw new Error('يرجى تأكيد بريدك الإلكتروني أولاً. تحقق من صندوق الوارد الخاص بك.');
+          }
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+          }
+          if (error.message.includes('email rate limit exceeded')) {
+            throw new Error('تم تجاوز حد إرسال رسائل البريد الإلكتروني. يرجى المحاولة لاحقاً.');
+          }
+          throw error;
+        }
+        onSuccess();
       }
       
       if (rememberMe) {
@@ -56,19 +89,9 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       } else {
         localStorage.removeItem('rememberedUser');
       }
-      
-      onSuccess();
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('خطأ في البريد الإلكتروني أو كلمة المرور.');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setError('البريد الإلكتروني مستخدم بالفعل.');
-      } else if (err.code === 'auth/weak-password') {
-        setError('كلمة المرور ضعيفة جداً.');
-      } else {
-        setError('حدث خطأ ما. يرجى المحاولة مرة أخرى.');
-      }
+      setError(err.message || 'حدث خطأ ما. يرجى المحاولة مرة أخرى.');
     } finally {
       setLoading(false);
     }
@@ -80,10 +103,16 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       return;
     }
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        if (error.message.includes('email rate limit exceeded')) {
+          throw new Error('تم تجاوز حد إرسال رسائل البريد الإلكتروني. يرجى المحاولة لاحقاً.');
+        }
+        throw error;
+      }
       alert('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
     } catch (err: any) {
-      setError('فشل إرسال رابط إعادة التعيين.');
+      setError(err.message || 'فشل إرسال رابط إعادة التعيين.');
     }
   };
 
@@ -99,6 +128,12 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       </div>
 
       <ErrorMessage message={error} />
+      
+      {successMessage && (
+        <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-green-700 text-sm font-bold text-center">
+          {successMessage}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

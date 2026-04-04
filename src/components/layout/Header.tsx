@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Search, User, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { auth } from '../../firebase';
+import { supabase } from '../../lib/supabase';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -8,7 +9,19 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
-  const user = auth.currentUser;
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3 flex items-center justify-between border-b border-gray-100 shadow-sm shrink-0">
@@ -39,7 +52,7 @@ export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
           className="w-9 h-9 rounded-full border-2 border-blue-50 overflow-hidden shadow-sm hover:scale-105 transition-transform"
         >
           <img 
-            src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} 
+            src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} 
             alt="Profile"
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"

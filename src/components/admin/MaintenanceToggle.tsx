@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Power, Loader2 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { supabase } from '../../lib/supabase';
 
 export default function MaintenanceToggle() {
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -11,10 +10,14 @@ export default function MaintenanceToggle() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const docRef = doc(db, 'admin_settings', 'general');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setIsMaintenance(docSnap.data().maintenanceMode || false);
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .select('settings')
+          .eq('id', 'general')
+          .single();
+        
+        if (data) {
+          setIsMaintenance(data.settings.maintenanceMode || false);
         }
       } catch (error) {
         console.error('Error fetching maintenance status:', error);
@@ -29,7 +32,11 @@ export default function MaintenanceToggle() {
     setToggling(true);
     const newStatus = !isMaintenance;
     try {
-      await setDoc(doc(db, 'admin_settings', 'general'), { maintenanceMode: newStatus }, { merge: true });
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({ id: 'general', settings: { maintenanceMode: newStatus } });
+      
+      if (error) throw error;
       setIsMaintenance(newStatus);
     } catch (error) {
       console.error('Error toggling maintenance mode:', error);

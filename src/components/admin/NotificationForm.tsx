@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Send, Loader2, BellRing } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { supabase } from '../../lib/supabase';
 
 export default function NotificationForm() {
   const [title, setTitle] = useState('');
@@ -18,12 +17,16 @@ export default function NotificationForm() {
         // In a real app, this would send only to the admin's device token
         alert(`🔔 إشعار تجريبي:\n\nالعنوان: ${title}\nالرسالة: ${message}`);
       } else {
-        await addDoc(collection(db, 'notifications'), {
-          title,
-          message,
-          createdAt: Date.now(),
-          sentBy: auth.currentUser?.email || 'Admin'
-        });
+        const { data: { session } } = await supabase.auth.getSession();
+        const { error } = await supabase
+          .from('notifications')
+          .insert({
+            title,
+            message,
+            sent_by: session?.user?.email || 'Admin'
+          });
+        
+        if (error) throw error;
         setTitle('');
         setMessage('');
         alert('تم إرسال الإشعار بنجاح للجميع!');

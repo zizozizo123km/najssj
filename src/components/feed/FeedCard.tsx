@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send } from 'lucide-react';
-import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, orderBy } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { supabase } from '../../lib/supabase';
 import ActionButtons from './ActionButtons';
 
 interface FeedCardProps {
@@ -32,49 +31,119 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!item.id) return;
 
-    // Listen to likes
-    const likesRef = collection(db, 'posts', item.id, 'likes');
-    const unsubscribeLikes = onSnapshot(likesRef, (snapshot) => {
-      setLikesCount(snapshot.size);
-      if (auth.currentUser) {
-        const myLike = snapshot.docs.find(d => d.data().userId === auth.currentUser?.uid);
-        setIsLikedByMe(!!myLike);
-      }
-    }, (error) => {
-      console.error("Error fetching likes:", error);
-    });
+    const fetchInitialData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user.id ?? null);
 
-    // Listen to comments
-    const commentsRef = collection(db, 'posts', item.id, 'comments');
-    const q = query(commentsRef, orderBy('createdAt', 'asc'));
-    const unsubscribeComments = onSnapshot(q, (snapshot) => {
-      setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (error) => {
-      console.error("Error fetching comments:", error);
-    });
+      // Fetch likes
+      const { data: likes, error: likesError } = await supabase
+        .from('likes')
+        .select('*')
+        .eq('post_id', item.id);
+      
+      if (likes) {
+        setLikesCount(likes.length);
+        if (session?.user) {
+          setIsLikedByMe(likes.some(l => l.user_id === session.user.id));
+        }
+      }
+
+      // Fetch comments
+      const { data: commentsData, error: commentsError } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('post_id', item.id)
+        .order('created_at', { ascending: true });
+      
+      if (commentsData) {
+        setComments(commentsData.map(c => ({
+          id: c.id,
+          ...c,
+          author: c.author_name,
+          authorAvatar: c.author_avatar,
+          createdAt: c.created_at
+        })));
+      }
+    };
+
+    fetchInitialData();
+
+    // Subscribe to likes
+    const likesChannel = supabase
+      .channel(`likes_${item.id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'likes',
+        filter: `post_id=eq.${item.id}`
+      }, async () => {
+        const { data } = await supabase
+          .from('likes')
+          .select('*')
+          .eq('post_id', item.id);
+        if (data) {
+          setLikesCount(data.length);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setIsLikedByMe(data.some(l => l.user_id === session.user.id));
+          }
+        }
+      })
+      .subscribe();
+
+    // Subscribe to comments
+    const commentsChannel = supabase
+      .channel(`comments_${item.id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'comments',
+        filter: `post_id=eq.${item.id}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const c = payload.new;
+          setComments(prev => [...prev, {
+            id: c.id,
+            ...c,
+            author: c.author_name,
+            authorAvatar: c.author_avatar,
+            createdAt: c.created_at
+          }]);
+        } else if (payload.eventType === 'DELETE') {
+          setComments(prev => prev.filter(c => c.id !== payload.old.id));
+        }
+      })
+      .subscribe();
 
     return () => {
-      unsubscribeLikes();
-      unsubscribeComments();
+      supabase.removeChannel(likesChannel);
+      supabase.removeChannel(commentsChannel);
     };
   }, [item.id]);
 
   const handleLike = async () => {
-    if (!auth.currentUser) return alert('يجب تسجيل الدخول أولاً');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return alert('يجب تسجيل الدخول أولاً');
     
-    const likeDocRef = doc(db, 'posts', item.id, 'likes', auth.currentUser.uid);
     try {
       if (isLikedByMe) {
-        await deleteDoc(likeDocRef);
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('post_id', item.id)
+          .eq('user_id', session.user.id);
       } else {
-        await setDoc(likeDocRef, {
-          postId: item.id,
-          userId: auth.currentUser.uid,
-          createdAt: Date.now()
-        });
+        await supabase
+          .from('likes')
+          .insert({
+            post_id: item.id,
+            user_id: session.user.id
+          });
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -83,18 +152,22 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser || !newComment.trim()) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || !newComment.trim()) return;
 
     setIsSubmittingComment(true);
     try {
-      await addDoc(collection(db, 'posts', item.id, 'comments'), {
-        postId: item.id,
-        userId: auth.currentUser.uid,
-        author: auth.currentUser.displayName || 'مستخدم',
-        authorAvatar: auth.currentUser.photoURL || null,
-        content: newComment.trim(),
-        createdAt: Date.now()
-      });
+      const { error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: item.id,
+          user_id: session.user.id,
+          author_name: session.user.user_metadata.full_name || 'مستخدم',
+          author_avatar: session.user.user_metadata.avatar_url || null,
+          content: newComment.trim()
+        });
+      
+      if (error) throw error;
       setNewComment('');
     } catch (error) {
       console.error("Error adding comment:", error);

@@ -17,22 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  collection, 
-  query, 
-  onSnapshot, 
-  orderBy, 
-  doc, 
-  getDoc, 
-  addDoc,
-  deleteDoc,
-  updateDoc,
-  serverTimestamp,
-  limit,
-  increment,
-  runTransaction
-} from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { GoogleGenAI } from "@google/genai";
 
 interface Message {
@@ -66,22 +51,39 @@ export default function ChatRoom() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showModeration, setShowModeration] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUserId(session?.user.id ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     if (!groupId) return;
 
     // Check admin status
     const checkAdmin = async () => {
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        } else if (
-          auth.currentUser.email === "dzs325105@gmail.com" || 
-          auth.currentUser.email === "nacero123@gmail.com"
-        ) {
-          setIsAdmin(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile?.role === 'admin') {
+            setIsAdmin(true);
+          } else if (
+            session.user.email === "dzs325105@gmail.com" || 
+            session.user.email === "nacero123@gmail.com"
+          ) {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
         }
       }
     };
@@ -89,47 +91,94 @@ export default function ChatRoom() {
 
     // Fetch group info
     const fetchGroup = async () => {
-      const groupDoc = await getDoc(doc(db, 'chatGroups', groupId));
-      if (groupDoc.exists()) {
-        setGroup({ id: groupDoc.id, ...groupDoc.data() } as ChatGroup);
-        
-        // Increment member count (simulated for now)
-        await updateDoc(doc(db, 'chatGroups', groupId), {
-          memberCount: increment(1)
+      const { data, error } = await supabase
+        .from('chat_groups')
+        .select('*')
+        .eq('id', groupId)
+        .single();
+      
+      if (data) {
+        setGroup({
+          id: data.id,
+          name: data.name,
+          branchId: data.branch_id,
+          subjectId: data.subject_id,
+          memberCount: data.member_count,
+          isLocked: data.is_locked
         });
+        
+        // Increment member count (simplified)
+        await supabase
+          .from('chat_groups')
+          .update({ member_count: (data.member_count || 0) + 1 })
+          .eq('id', groupId);
       } else {
         navigate('/groups');
       }
     };
     fetchGroup();
 
-    // Listen to messages
-    const q = query(
-      collection(db, 'chatGroups', groupId, 'messages'),
-      orderBy('timestamp', 'asc'),
-      limit(100)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Message[];
-      setMessages(msgs);
+    // Fetch messages
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      
+      if (data) {
+        setMessages(data.map(m => ({
+          id: m.id,
+          text: m.text,
+          senderId: m.sender_id,
+          senderName: m.sender_name,
+          senderAvatar: m.sender_avatar,
+          timestamp: m.created_at,
+          type: m.type,
+          imageUrl: m.image_url
+        })));
+      }
       setLoading(false);
       scrollToBottom();
-    }, (error) => {
-      console.error("Error fetching messages:", error);
-      setLoading(false);
-    });
+    };
+    fetchMessages();
+
+    // Realtime subscription for messages
+    const messagesChannel = supabase
+      .channel(`chat_messages_${groupId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'chat_messages',
+        filter: `group_id=eq.${groupId}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const m = payload.new;
+          setMessages(prev => [...prev, {
+            id: m.id,
+            text: m.text,
+            senderId: m.sender_id,
+            senderName: m.sender_name,
+            senderAvatar: m.sender_avatar,
+            timestamp: m.created_at,
+            type: m.type,
+            imageUrl: m.image_url
+          }]);
+          scrollToBottom();
+        } else if (payload.eventType === 'DELETE') {
+          setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+        }
+      })
+      .subscribe();
 
     return () => {
-      unsubscribe();
-      // Decrement member count when leaving
+      supabase.removeChannel(messagesChannel);
+      // Decrement member count when leaving (simplified)
       if (groupId) {
-        updateDoc(doc(db, 'chatGroups', groupId), {
-          memberCount: increment(-1)
-        }).catch(console.error);
+        supabase.rpc('decrement_member_count', { group_id: groupId }).then(({ error }) => {
+          if (error) console.error(error);
+        });
       }
     };
   }, [groupId, navigate]);
@@ -142,32 +191,38 @@ export default function ChatRoom() {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!inputText.trim() || !groupId || !auth.currentUser || group?.isLocked) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!inputText.trim() || !groupId || !session || group?.isLocked) return;
 
     const text = inputText.trim();
     setInputText('');
     setSending(true);
 
     try {
-      const messageData = {
-        text,
-        senderId: auth.currentUser.uid,
-        senderName: auth.currentUser.displayName || 'طالب',
-        senderAvatar: auth.currentUser.photoURL || '',
-        timestamp: serverTimestamp(),
-        type: 'text'
-      };
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          group_id: groupId,
+          text,
+          sender_id: session.user.id,
+          sender_name: session.user.user_metadata.full_name || 'طالب',
+          sender_avatar: session.user.user_metadata.avatar_url || '',
+          type: 'text'
+        });
 
-      await addDoc(collection(db, 'chatGroups', groupId, 'messages'), messageData);
+      if (error) throw error;
       
       // Update last message in group
-      await updateDoc(doc(db, 'chatGroups', groupId), {
-        lastMessage: {
-          text,
-          sender: auth.currentUser.displayName || 'طالب',
-          timestamp: Date.now()
-        }
-      });
+      await supabase
+        .from('chat_groups')
+        .update({
+          last_message: {
+            text,
+            sender: session.user.user_metadata.full_name || 'طالب',
+            timestamp: new Date().toISOString()
+          }
+        })
+        .eq('id', groupId);
 
       scrollToBottom();
     } catch (error) {
@@ -178,7 +233,8 @@ export default function ChatRoom() {
   };
 
   const handleAiAsk = async () => {
-    if (!inputText.trim() || !groupId || !auth.currentUser || isAiLoading) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!inputText.trim() || !groupId || !session || isAiLoading) return;
 
     const prompt = inputText.trim();
     setInputText('');
@@ -186,14 +242,16 @@ export default function ChatRoom() {
 
     // Add user message first
     try {
-      await addDoc(collection(db, 'chatGroups', groupId, 'messages'), {
-        text: prompt,
-        senderId: auth.currentUser.uid,
-        senderName: auth.currentUser.displayName || 'طالب',
-        senderAvatar: auth.currentUser.photoURL || '',
-        timestamp: serverTimestamp(),
-        type: 'text'
-      });
+      await supabase
+        .from('chat_messages')
+        .insert({
+          group_id: groupId,
+          text: prompt,
+          sender_id: session.user.id,
+          sender_name: session.user.user_metadata.full_name || 'طالب',
+          sender_avatar: session.user.user_metadata.avatar_url || '',
+          type: 'text'
+        });
 
       // Call Gemini
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -207,14 +265,16 @@ export default function ChatRoom() {
 
       const aiText = response.text || "عذراً، لم أستطع معالجة طلبك الآن.";
 
-      await addDoc(collection(db, 'chatGroups', groupId, 'messages'), {
-        text: aiText,
-        senderId: 'ai-assistant',
-        senderName: 'المساعد الذكي',
-        senderAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=study-ai',
-        timestamp: serverTimestamp(),
-        type: 'ai'
-      });
+      await supabase
+        .from('chat_messages')
+        .insert({
+          group_id: groupId,
+          text: aiText,
+          sender_id: 'ai-assistant',
+          sender_name: 'المساعد الذكي',
+          sender_avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=study-ai',
+          type: 'ai'
+        });
 
       scrollToBottom();
     } catch (error) {
@@ -227,7 +287,12 @@ export default function ChatRoom() {
   const handleDeleteMessage = async (messageId: string) => {
     if (!isAdmin || !groupId) return;
     try {
-      await deleteDoc(doc(db, 'chatGroups', groupId, 'messages', messageId));
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', messageId);
+      
+      if (error) throw error;
       setShowModeration(null);
     } catch (error) {
       console.error("Error deleting message:", error);
@@ -237,9 +302,12 @@ export default function ChatRoom() {
   const toggleLockGroup = async () => {
     if (!isAdmin || !groupId || !group) return;
     try {
-      await updateDoc(doc(db, 'chatGroups', groupId), {
-        isLocked: !group.isLocked
-      });
+      const { error } = await supabase
+        .from('chat_groups')
+        .update({ is_locked: !group.isLocked })
+        .eq('id', groupId);
+      
+      if (error) throw error;
       setGroup({ ...group, isLocked: !group.isLocked });
     } catch (error) {
       console.error("Error toggling lock:", error);
@@ -305,7 +373,7 @@ export default function ChatRoom() {
           </div>
         ) : (
           messages.map((msg, index) => {
-            const isMe = msg.senderId === auth.currentUser?.uid;
+            const isMe = msg.senderId === currentUserId;
             const isAi = msg.type === 'ai';
             
             return (

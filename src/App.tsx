@@ -1,7 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
 import Sidebar from './components/Sidebar';
 import Header from './components/layout/Header';
 import BottomNav from './components/layout/BottomNav';
@@ -19,7 +17,7 @@ import StudyPlanner from './pages/StudyPlanner';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MaintenanceScreen from './components/MaintenanceScreen';
-import { auth, db } from './firebase';
+import { supabase } from './lib/supabase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -41,8 +39,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
         <div className="h-screen flex flex-col items-center justify-center bg-red-50 p-6 text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">عذراً، حدث خطأ ما!</h1>
           <p className="text-gray-600 mb-6 max-w-md">
-            {this.state.error?.message.includes('{') 
-              ? "حدث خطأ في الاتصال بقاعدة البيانات. يرجى التحقق من إعدادات Firebase."
+            {this.state.error?.message.includes('Supabase') 
+              ? "حدث خطأ في الاتصال بقاعدة البيانات Supabase. يرجى التحقق من الإعدادات."
               : "حدث خطأ غير متوقع في التطبيق."}
           </p>
           <button 
@@ -66,22 +64,47 @@ export default function App() {
   const [isMaintenance, setIsMaintenance] = useState(false);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Auth Listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    const unsubscribeSettings = onSnapshot(doc(db, 'admin_settings', 'general'), (docSnap) => {
-      if (docSnap.exists()) {
-        setIsMaintenance(docSnap.data().maintenanceMode || false);
-      }
-    }, (error) => {
-      console.error("Error fetching settings:", error);
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
     });
 
+    // Maintenance Mode Listener
+    const fetchSettings = async () => {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('maintenance_mode')
+        .eq('id', 'general')
+        .single();
+      
+      if (data) {
+        setIsMaintenance(data.maintenance_mode);
+      }
+    };
+    fetchSettings();
+
+    // Realtime subscription for settings
+    const settingsChannel = supabase
+      .channel('admin_settings_changes')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'admin_settings',
+        filter: 'id=eq.general'
+      }, (payload) => {
+        setIsMaintenance(payload.new.maintenance_mode);
+      })
+      .subscribe();
+
     return () => {
-      unsubscribeAuth();
-      unsubscribeSettings();
+      authListener.unsubscribe();
+      supabase.removeChannel(settingsChannel);
     };
   }, []);
 

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Filter, Plus, Sparkles, TrendingUp, BookOpen, Video, FileText, AlertTriangle, X } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { supabase } from '../lib/supabase';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
@@ -16,31 +15,79 @@ export default function Dashboard() {
   const [editingPost, setEditingPost] = useState<any>(null);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      if (user) {
-        const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
-        
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-          const postsData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setFeed(postsData);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error fetching posts:", error);
-          setLoading(false);
-        });
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-        return () => unsubscribeSnapshot();
+  useEffect(() => {
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user.id ?? null);
+      
+      if (session) {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (data) {
+          setFeed(data.map(p => ({
+            id: p.id,
+            ...p,
+            createdAt: p.created_at,
+            authorId: p.author_id,
+            authorName: p.author_name,
+            authorAvatar: p.author_avatar
+          })));
+        }
+        setLoading(false);
       } else {
         setFeed([]);
         setLoading(false);
       }
+    };
+
+    fetchSession();
+
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user.id ?? null);
     });
 
-    return () => unsubscribeAuth();
+    const postsChannel = supabase
+      .channel('posts_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'posts'
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const p = payload.new;
+          setFeed(prev => [{
+            id: p.id,
+            ...p,
+            createdAt: p.created_at,
+            authorId: p.author_id,
+            authorName: p.author_name,
+            authorAvatar: p.author_avatar
+          }, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          const p = payload.new;
+          setFeed(prev => prev.map(item => item.id === p.id ? {
+            id: p.id,
+            ...p,
+            createdAt: p.created_at,
+            authorId: p.author_id,
+            authorName: p.author_name,
+            authorAvatar: p.author_avatar
+          } : item));
+        } else if (payload.eventType === 'DELETE') {
+          setFeed(prev => prev.filter(item => item.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      authListener.unsubscribe();
+      supabase.removeChannel(postsChannel);
+    };
   }, []);
 
   const handleCreatePost = (newPost: any) => {
@@ -54,7 +101,12 @@ export default function Dashboard() {
   const confirmDelete = async () => {
     if (!postToDelete) return;
     try {
-      await deleteDoc(doc(db, 'posts', postToDelete));
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postToDelete);
+      
+      if (error) throw error;
       setPostToDelete(null);
     } catch (error) {
       console.error("Error deleting post:", error);
@@ -147,13 +199,13 @@ export default function Dashboard() {
       <div className="space-y-6 px-2">
         <AnimatePresence mode="popLayout">
           {filteredFeed.map((item, index) => (
-            <FeedCard 
-              key={item.id} 
-              item={item} 
-              onClick={() => console.log('Open', item.id)}
-              onDelete={item.authorId === auth.currentUser?.uid ? handleDeletePost : undefined}
-              onEdit={item.authorId === auth.currentUser?.uid ? handleEditPost : undefined}
-            />
+              <FeedCard 
+                key={item.id} 
+                item={item} 
+                onClick={() => console.log('Open', item.id)}
+                onDelete={item.authorId === currentUserId ? handleDeletePost : undefined}
+                onEdit={item.authorId === currentUserId ? handleEditPost : undefined}
+              />
           ))}
         </AnimatePresence>
       </div>

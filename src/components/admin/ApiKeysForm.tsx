@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Save, Loader2 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { supabase } from '../../lib/supabase';
 
 const API_TYPES = [
   { id: 'youtube', name: 'YouTube API' },
@@ -21,10 +20,14 @@ export default function ApiKeysForm() {
   useEffect(() => {
     const fetchKeys = async () => {
       try {
-        const docRef = doc(db, 'admin_settings', 'api_keys');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setKeys(docSnap.data());
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .select('settings')
+          .eq('id', 'api_keys')
+          .single();
+        
+        if (data) {
+          setKeys(data.settings);
         }
       } catch (error) {
         console.error('Error fetching API keys:', error);
@@ -47,7 +50,11 @@ export default function ApiKeysForm() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, 'admin_settings', 'api_keys'), keys);
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({ id: 'api_keys', settings: keys });
+      
+      if (error) throw error;
       alert('تم حفظ مفاتيح API بنجاح!');
     } catch (error) {
       console.error('Error saving API keys:', error);

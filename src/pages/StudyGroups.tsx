@@ -12,18 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  collection, 
-  query, 
-  onSnapshot, 
-  orderBy, 
-  doc, 
-  getDoc, 
-  setDoc,
-  serverTimestamp,
-  where
-} from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../data/baccalaureate';
 
 interface ChatGroup {
@@ -51,35 +40,93 @@ export default function StudyGroups() {
   useEffect(() => {
     // Check if user is admin
     const checkAdmin = async () => {
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        if (userDoc.exists() && userDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        } else if (
-          auth.currentUser.email === "dzs325105@gmail.com" || 
-          auth.currentUser.email === "nacero123@gmail.com"
-        ) {
-          setIsAdmin(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile?.role === 'admin') {
+            setIsAdmin(true);
+          } else if (
+            session.user.email === "dzs325105@gmail.com" || 
+            session.user.email === "nacero123@gmail.com"
+          ) {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
         }
       }
     };
     checkAdmin();
 
-    // Listen to chat groups
-    const q = query(collection(db, 'chatGroups'), orderBy('name', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const groupsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ChatGroup[];
-      setGroups(groupsData);
+    // Fetch chat groups
+    const fetchGroups = async () => {
+      const { data, error } = await supabase
+        .from('chat_groups')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error("Error fetching groups:", error);
+      } else {
+        setGroups(data.map(g => ({
+          id: g.id,
+          name: g.name,
+          branchId: g.branch_id,
+          subjectId: g.subject_id,
+          memberCount: g.member_count,
+          lastMessage: g.last_message,
+          isLocked: g.is_locked
+        })));
+      }
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching groups:", error);
-      setLoading(false);
-    });
+    };
+    fetchGroups();
 
-    return () => unsubscribe();
+    // Realtime subscription for chat groups
+    const groupsChannel = supabase
+      .channel('chat_groups_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'chat_groups'
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newGroup = payload.new;
+          setGroups(prev => [...prev, {
+            id: newGroup.id,
+            name: newGroup.name,
+            branchId: newGroup.branch_id,
+            subjectId: newGroup.subject_id,
+            memberCount: newGroup.member_count,
+            lastMessage: newGroup.last_message,
+            isLocked: newGroup.is_locked
+          }].sort((a, b) => a.name.localeCompare(b.name)));
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedGroup = payload.new;
+          setGroups(prev => prev.map(g => g.id === updatedGroup.id ? {
+            id: updatedGroup.id,
+            name: updatedGroup.name,
+            branchId: updatedGroup.branch_id,
+            subjectId: updatedGroup.subject_id,
+            memberCount: updatedGroup.member_count,
+            lastMessage: updatedGroup.last_message,
+            isLocked: updatedGroup.is_locked
+          } : g));
+        } else if (payload.eventType === 'DELETE') {
+          setGroups(prev => prev.filter(g => g.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(groupsChannel);
+    };
   }, []);
 
   const initializeGroups = async () => {
@@ -87,25 +134,28 @@ export default function StudyGroups() {
     
     setLoading(true);
     try {
+      const groupsToCreate = [];
       for (const branch of BAC_BRANCHES) {
         const subjects = BAC_SUBJECTS[branch.id] || [];
         for (const subject of subjects) {
           const groupId = `${branch.id}_${subject.id}`;
-          const groupRef = doc(db, 'chatGroups', groupId);
-          const groupSnap = await getDoc(groupRef);
-          
-          if (!groupSnap.exists()) {
-            await setDoc(groupRef, {
-              name: `${subject.name} - ${branch.name}`,
-              branchId: branch.id,
-              subjectId: subject.id,
-              memberCount: 0,
-              isLocked: false,
-              createdAt: serverTimestamp()
-            });
-          }
+          groupsToCreate.push({
+            id: groupId,
+            name: `${subject.name} - ${branch.name}`,
+            branch_id: branch.id,
+            subject_id: subject.id,
+            member_count: 0,
+            is_locked: false
+          });
         }
       }
+
+      const { error } = await supabase
+        .from('chat_groups')
+        .upsert(groupsToCreate, { onConflict: 'id' });
+
+      if (error) throw error;
+      
       alert("تم تهيئة المجموعات بنجاح!");
     } catch (error) {
       console.error("Error initializing groups:", error);

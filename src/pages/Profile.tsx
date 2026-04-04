@@ -1,14 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signOut, updateProfile } from 'firebase/auth';
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  onSnapshot,
-  getDocFromServer
-} from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LogOut, 
@@ -23,7 +14,7 @@ import {
   Settings as SettingsIcon,
   Calendar,
 } from 'lucide-react';
-import { auth, db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
 import ProgressCard from '../components/profile/ProgressCard';
@@ -81,26 +72,8 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [studyPlan, setStudyPlan] = useState<any>(null);
 
-  function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-    const errInfo: FirestoreErrorInfo = {
-      error: error instanceof Error ? error.message : String(error),
-      authInfo: {
-        userId: auth.currentUser?.uid,
-        email: auth.currentUser?.email,
-        emailVerified: auth.currentUser?.emailVerified,
-        isAnonymous: auth.currentUser?.isAnonymous,
-        tenantId: auth.currentUser?.tenantId,
-        providerInfo: auth.currentUser?.providerData.map(provider => ({
-          providerId: provider.providerId,
-          displayName: provider.displayName,
-          email: provider.email,
-          photoUrl: provider.photoURL
-        })) || []
-      },
-      operationType,
-      path
-    }
-    console.error('Firestore Error: ', JSON.stringify(errInfo));
+  function handleSupabaseError(error: any) {
+    console.error('Supabase Error: ', error);
     setError("حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة مرة أخرى.");
   }
 
@@ -112,102 +85,107 @@ export default function Profile() {
       console.error("Error loading study plan from localStorage:", e);
     }
     
-    const testConnection = async () => {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if(error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration.");
-        }
-      }
-    };
-    testConnection();
-
-    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
-      if (currentUser) {
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        
-        const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setUser({
-              displayName: data.displayName || currentUser.displayName || null,
-              email: data.email || currentUser.email || null,
-              photoURL: data.photoURL || currentUser.photoURL || null,
-              branch: data.branch || 'علوم تجريبية',
-              favoriteSubjects: data.favoriteSubjects || ['الرياضيات', 'الفيزياء'],
-              stats: data.stats || {
-                savedSummaries: 0,
-                analyzedVideos: 0,
-                completedQuizzes: 0,
-                successRate: 0,
-              },
-              activities: Array.isArray(data.activities) ? data.activities : []
-            });
-          } else {
-            const initialData: UserProfile = {
-              displayName: currentUser.displayName || null,
-              email: currentUser.email || null,
-              photoURL: currentUser.photoURL || null,
-              branch: 'sciences',
-              favoriteSubjects: ['الرياضيات', 'الفيزياء'],
-              stats: {
-                savedSummaries: 0,
-                analyzedVideos: 0,
-                completedQuizzes: 0,
-                successRate: 0,
-              },
-              activities: []
-            };
-            
-            setDoc(userDocRef, initialData).catch(err => {
-              handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`);
-            });
-            setUser(initialData);
-          }
-          setLoading(false);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
-        });
-
-        return () => unsubscribeDoc();
-      } else {
+    const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         navigate('/login');
-        setLoading(false);
+        return;
       }
-    });
 
-    return () => unsubscribeAuth();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        handleSupabaseError(error);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        setUser({
+          displayName: data.display_name || session.user.user_metadata.full_name || null,
+          email: data.email || session.user.email || null,
+          photoURL: data.photo_url || session.user.user_metadata.avatar_url || null,
+          branch: data.branch || 'علوم تجريبية',
+          favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
+          stats: data.stats || {
+            savedSummaries: 0,
+            analyzedVideos: 0,
+            completedQuizzes: 0,
+            successRate: 0,
+          },
+          activities: Array.isArray(data.activities) ? data.activities : []
+        });
+      }
+      setLoading(false);
+    };
+
+    fetchProfile();
+
+    // Realtime subscription for profile changes
+    const profileChannel = supabase
+      .channel('profile_changes')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles'
+      }, (payload) => {
+        const data = payload.new;
+        setUser(prev => prev ? ({
+          ...prev,
+          displayName: data.display_name,
+          photoURL: data.photo_url,
+          branch: data.branch,
+          favoriteSubjects: data.favorite_subjects,
+          stats: data.stats,
+          activities: data.activities
+        }) : null);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
   }, [navigate]);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     navigate('/login');
   };
 
   const handleSaveSettings = async (newData: any) => {
-    if (user && auth.currentUser) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (user && session) {
       try {
-        await updateProfile(auth.currentUser, {
-          displayName: newData.displayName,
-          photoURL: newData.photoURL
-        });
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            display_name: newData.displayName,
+            photo_url: newData.photoURL,
+            branch: newData.branch,
+            favorite_subjects: newData.favoriteSubjects
+          })
+          .eq('id', session.user.id);
 
-        const userDocRef = doc(db, 'users', auth.currentUser.uid);
-        await updateDoc(userDocRef, {
-          displayName: newData.displayName || null,
-          photoURL: newData.photoURL || null,
-          branch: newData.branch || null,
-          favoriteSubjects: newData.favoriteSubjects || []
+        if (error) throw error;
+
+        // Also update auth metadata
+        await supabase.auth.updateUser({
+          data: { 
+            full_name: newData.displayName,
+            avatar_url: newData.photoURL
+          }
         });
 
         setIsEditing(false);
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
+        handleSupabaseError(error);
       }
     }
   };
-
   const handleRandomQuiz = () => {
     const subjects = ['رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 'تربية إسلامية', 'فلسفة', 'لغة ألمانية'];
     const terms = ['الفصل الأول', 'الفصل الثاني', 'الفصل الثالث'];

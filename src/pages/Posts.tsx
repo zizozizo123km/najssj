@@ -2,8 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Award, Filter, Search, Bookmark } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { supabase } from '../lib/supabase';
 import CreatePostModal from '../components/feed/CreatePostModal';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
@@ -23,32 +22,59 @@ export default function Posts() {
   const [filter, setFilter] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      if (user) {
-        const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
-        
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-          const postsData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setPosts(postsData);
-          setLoading(false);
-        }, (error) => {
-          console.error("Error fetching posts:", error);
-          setLoading(false);
-        });
+  const [user, setUser] = useState<any>(null);
 
-        return () => unsubscribeSnapshot();
-      } else {
-        setPosts([]);
-        setLoading(false);
-      }
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
     });
 
-    return () => unsubscribeAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+
+    const fetchPosts = async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data) {
+        setPosts(data.map(p => ({
+          id: p.id,
+          ...p,
+          authorId: p.author_id,
+          authorName: p.author_name,
+          authorAvatar: p.author_avatar,
+          likesCount: p.likes_count,
+          commentsCount: p.comments_count,
+          createdAt: p.created_at
+        })));
+      }
+      setLoading(false);
+    };
+
+    fetchPosts();
+
+    const postsChannel = supabase
+      .channel('posts_feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchPosts)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(postsChannel);
+    };
+  }, [user]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -79,7 +105,11 @@ export default function Posts() {
   const handleDeletePost = async (id: string) => {
     if (window.confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
       try {
-        await deleteDoc(doc(db, 'posts', id));
+        const { error } = await supabase
+          .from('posts')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
       } catch (error) {
         console.error("Error deleting post:", error);
         alert("حدث خطأ أثناء حذف المنشور.");
@@ -163,7 +193,7 @@ export default function Posts() {
             className="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:bg-gray-50 transition-colors text-right"
           >
             <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <span className="font-bold">{auth.currentUser?.displayName?.charAt(0) || 'أ'}</span>
+              <span className="font-bold">{user?.user_metadata?.full_name?.charAt(0) || 'أ'}</span>
             </div>
             <span className="text-gray-500 font-medium">بم تفكر؟ شارك أفكارك مع زملائك...</span>
           </button>
@@ -184,8 +214,8 @@ export default function Posts() {
                   key={post.id} 
                   item={post} 
                   onClick={() => console.log('Open', post.id)}
-                  onDelete={post.authorId === auth.currentUser?.uid ? handleDeletePost : undefined}
-                  onEdit={post.authorId === auth.currentUser?.uid ? handleEditPost : undefined}
+                  onDelete={post.authorId === user?.id ? handleDeletePost : undefined}
+                  onEdit={post.authorId === user?.id ? handleEditPost : undefined}
                 />
               ))}
             </AnimatePresence>
