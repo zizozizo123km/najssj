@@ -10,7 +10,7 @@ import Quiz from './pages/Quiz';
 import Posts from './pages/Posts';
 import YouTubeVideoAnalyzer from './pages/YouTubeVideoAnalyzer';
 import Login from './pages/Login';
-import Chat from './pages/Chat';
+import StudyGroups from './pages/StudyGroups';
 import ChatRoom from './pages/ChatRoom';
 import Profile from './pages/Profile';
 import Library from './pages/Library';
@@ -141,8 +141,8 @@ export default function App() {
                   <Routes>
                     <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
                     <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" />} />
-                    <Route path="/chat" element={user ? <Chat /> : <Navigate to="/login" />} />
-                    <Route path="/chat/:id" element={user ? <ChatRoom /> : <Navigate to="/login" />} />
+                    <Route path="/groups" element={user ? <StudyGroups /> : <Navigate to="/login" />} />
+                    <Route path="/groups/:groupId" element={user ? <ChatRoom /> : <Navigate to="/login" />} />
                     <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
                     <Route path="/library" element={user ? <Library /> : <Navigate to="/login" />} />
                     <Route path="/ai" element={user ? <VirtualTeacher /> : <Navigate to="/login" />} />

@@ -14,7 +14,7 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
 
   const menuItems = [
     { name: 'الرئيسية', path: '/', icon: Home },
-    { name: 'الدردشة العامة', path: '/chat', icon: MessageSquare },
+    { name: 'مجموعات الدراسة', path: '/groups', icon: MessageSquare },
     { name: 'الأستاذ الافتراضي', path: '/ai', icon: Brain },
     { name: 'المنشورات', path: '/posts', icon: FileText },
     { name: 'المكتبة', path: '/library', icon: Library },

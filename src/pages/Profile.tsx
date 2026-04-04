@@ -58,29 +58,6 @@ interface FirestoreErrorInfo {
   }
 }
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
 interface UserProfile {
   displayName: string | null;
   email: string | null;
@@ -100,12 +77,40 @@ export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [studyPlan, setStudyPlan] = useState<any>(null);
 
+  function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+    const errInfo: FirestoreErrorInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        emailVerified: auth.currentUser?.emailVerified,
+        isAnonymous: auth.currentUser?.isAnonymous,
+        tenantId: auth.currentUser?.tenantId,
+        providerInfo: auth.currentUser?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
+      },
+      operationType,
+      path
+    }
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    setError("حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة مرة أخرى.");
+  }
+
   useEffect(() => {
-    const savedPlan = localStorage.getItem('studyPlan');
-    if (savedPlan) setStudyPlan(JSON.parse(savedPlan));
+    try {
+      const savedPlan = localStorage.getItem('studyPlan');
+      if (savedPlan) setStudyPlan(JSON.parse(savedPlan));
+    } catch (e) {
+      console.error("Error loading study plan from localStorage:", e);
+    }
     
     const testConnection = async () => {
       try {
@@ -137,7 +142,7 @@ export default function Profile() {
                 completedQuizzes: 0,
                 successRate: 0,
               },
-              activities: data.activities || []
+              activities: Array.isArray(data.activities) ? data.activities : []
             });
           } else {
             const initialData: UserProfile = {
@@ -220,6 +225,24 @@ export default function Profile() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-4 p-6 text-center">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
+          <HelpCircle size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">عذراً، حدث خطأ</h2>
+        <p className="text-gray-500 max-w-xs">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all"
+        >
+          إعادة المحاولة
+        </button>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -273,7 +296,7 @@ export default function Profile() {
               <div className="lg:col-span-8 space-y-8">
                 <ActivityList activities={user.activities} />
                 
-                {studyPlan && (
+                {Array.isArray(studyPlan) && (
                   <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-4">
                     <h3 className="font-bold text-gray-900 flex items-center gap-2 border-b pb-3">
                       <Calendar size={20} className="text-blue-500" />
@@ -283,7 +306,7 @@ export default function Profile() {
                       {studyPlan.map((day: any, i: number) => (
                         <div key={i} className="bg-gray-50 p-4 rounded-xl space-y-2">
                           <h4 className="font-bold text-gray-900">{day.day}</h4>
-                          {day.slots.map((slot: any, j: number) => (
+                          {Array.isArray(day.slots) && day.slots.map((slot: any, j: number) => (
                             <p key={j} className="text-xs text-gray-600">{slot.time}: {slot.subject}</p>
                           ))}
                         </div>

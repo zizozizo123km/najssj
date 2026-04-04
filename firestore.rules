@@ -105,6 +105,18 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
+    match /chatGroups/{groupId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && 
+                      get(/databases/$(database)/documents/chatGroups/$(groupId)).data.isLocked != true;
+        allow delete: if isAdmin();
+      }
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;
