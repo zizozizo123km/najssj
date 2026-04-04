@@ -77,7 +77,26 @@ export default function Profile() {
         .single();
 
       if (error) {
-        handleSupabaseError(error);
+        // If table doesn't exist, provide fallback data from session
+        if (error.message.includes('relation "profiles" does not exist')) {
+          setUser({
+            displayName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'مستخدم جديد',
+            email: session.user.email || null,
+            photoURL: session.user.user_metadata?.avatar_url || null,
+            branch: session.user.user_metadata?.branch || 'علوم تجريبية',
+            favoriteSubjects: ['الرياضيات', 'الفيزياء'],
+            stats: {
+              savedSummaries: 0,
+              analyzedVideos: 0,
+              completedQuizzes: 0,
+              successRate: 0,
+            },
+            activities: []
+          });
+          setError("تنبيه: جداول قاعدة البيانات غير موجودة. يرجى تشغيل كود SQL في لوحة التحكم.");
+        } else {
+          handleSupabaseError(error);
+        }
         setLoading(false);
         return;
       }
