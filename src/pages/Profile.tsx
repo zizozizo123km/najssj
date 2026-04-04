@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signOut, updateProfile } from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  onSnapshot,
+  getDocFromServer
+} from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LogOut, 
@@ -14,12 +23,63 @@ import {
   Settings as SettingsIcon,
   Calendar,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { auth, db } from '../firebase';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
 import ProgressCard from '../components/profile/ProgressCard';
 import ActivityList from '../components/profile/ActivityList';
 import SettingsForm from '../components/profile/SettingsForm';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 interface UserProfile {
   displayName: string | null;
@@ -40,149 +100,109 @@ export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [studyPlan, setStudyPlan] = useState<any>(null);
 
-  function handleSupabaseError(error: any) {
-    console.error('Supabase Error: ', error);
-    if (error?.message?.includes('fetch') || error?.message?.includes('Network')) {
-      setError("تعذر الاتصال بقاعدة البيانات. يرجى التأكد من إعدادات VITE_SUPABASE_URL.");
-    } else if (error?.code === 'PGRST116' || error?.message?.includes('relation')) {
-      setError("يبدو أن بعض الجداول ناقصة في قاعدة البيانات. يرجى تشغيل كود SQL.");
-    } else {
-      setError("حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة مرة أخرى.");
-    }
-  }
-
   useEffect(() => {
-    try {
-      const savedPlan = localStorage.getItem('studyPlan');
-      if (savedPlan) setStudyPlan(JSON.parse(savedPlan));
-    } catch (e) {
-      console.error("Error loading study plan from localStorage:", e);
-    }
+    const savedPlan = localStorage.getItem('studyPlan');
+    if (savedPlan) setStudyPlan(JSON.parse(savedPlan));
     
-    const fetchProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/login');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        // If table doesn't exist, provide fallback data from session
-        if (error.message.includes('relation "profiles" does not exist')) {
-          setUser({
-            displayName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'مستخدم جديد',
-            email: session.user.email || null,
-            photoURL: session.user.user_metadata?.avatar_url || null,
-            branch: session.user.user_metadata?.branch || 'علوم تجريبية',
-            favoriteSubjects: ['الرياضيات', 'الفيزياء'],
-            stats: {
-              savedSummaries: 0,
-              analyzedVideos: 0,
-              completedQuizzes: 0,
-              successRate: 0,
-            },
-            activities: []
-          });
-          setError("تنبيه: جداول قاعدة البيانات غير موجودة. يرجى تشغيل كود SQL في لوحة التحكم.");
-        } else {
-          handleSupabaseError(error);
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
         }
-        setLoading(false);
-        return;
       }
+    };
+    testConnection();
 
-      if (data) {
-        setUser({
-          displayName: data.display_name || session.user.user_metadata.full_name || null,
-          email: data.email || session.user.email || null,
-          photoURL: data.photo_url || session.user.user_metadata.avatar_url || null,
-          branch: data.branch || 'علوم تجريبية',
-          favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
-          stats: data.stats || {
-            savedSummaries: 0,
-            analyzedVideos: 0,
-            completedQuizzes: 0,
-            successRate: 0,
-          },
-          activities: Array.isArray(data.activities) ? data.activities : []
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
+      if (currentUser) {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        
+        const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUser({
+              displayName: data.displayName || currentUser.displayName || null,
+              email: data.email || currentUser.email || null,
+              photoURL: data.photoURL || currentUser.photoURL || null,
+              branch: data.branch || 'علوم تجريبية',
+              favoriteSubjects: data.favoriteSubjects || ['الرياضيات', 'الفيزياء'],
+              stats: data.stats || {
+                savedSummaries: 0,
+                analyzedVideos: 0,
+                completedQuizzes: 0,
+                successRate: 0,
+              },
+              activities: data.activities || []
+            });
+          } else {
+            const initialData: UserProfile = {
+              displayName: currentUser.displayName || null,
+              email: currentUser.email || null,
+              photoURL: currentUser.photoURL || null,
+              branch: 'sciences',
+              favoriteSubjects: ['الرياضيات', 'الفيزياء'],
+              stats: {
+                savedSummaries: 0,
+                analyzedVideos: 0,
+                completedQuizzes: 0,
+                successRate: 0,
+              },
+              activities: []
+            };
+            
+            setDoc(userDocRef, initialData).catch(err => {
+              handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`);
+            });
+            setUser(initialData);
+          }
+          setLoading(false);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
         });
+
+        return () => unsubscribeDoc();
+      } else {
+        navigate('/login');
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    });
 
-    fetchProfile();
-
-    // Realtime subscription for profile changes
-    const profileChannel = supabase
-      .channel('profile_changes')
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'profiles'
-      }, (payload) => {
-        const data = payload.new;
-        setUser(prev => prev ? ({
-          ...prev,
-          displayName: data.display_name,
-          photoURL: data.photo_url,
-          branch: data.branch,
-          favoriteSubjects: data.favorite_subjects,
-          stats: data.stats,
-          activities: data.activities
-        }) : null);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(profileChannel);
-    };
+    return () => unsubscribeAuth();
   }, [navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     navigate('/login');
   };
 
   const handleSaveSettings = async (newData: any) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (user && session) {
+    if (user && auth.currentUser) {
       try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            display_name: newData.displayName,
-            photo_url: newData.photoURL,
-            branch: newData.branch,
-            favorite_subjects: newData.favoriteSubjects
-          })
-          .eq('id', session.user.id);
+        await updateProfile(auth.currentUser, {
+          displayName: newData.displayName,
+          photoURL: newData.photoURL
+        });
 
-        if (error) throw error;
-
-        // Also update auth metadata
-        await supabase.auth.updateUser({
-          data: { 
-            full_name: newData.displayName,
-            avatar_url: newData.photoURL
-          }
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userDocRef, {
+          displayName: newData.displayName || null,
+          photoURL: newData.photoURL || null,
+          branch: newData.branch || null,
+          favoriteSubjects: newData.favoriteSubjects || []
         });
 
         setIsEditing(false);
       } catch (error) {
-        handleSupabaseError(error);
+        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
       }
     }
   };
+
   const handleRandomQuiz = () => {
     const subjects = ['رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 'تربية إسلامية', 'فلسفة', 'لغة ألمانية'];
     const terms = ['الفصل الأول', 'الفصل الثاني', 'الفصل الثالث'];
@@ -196,24 +216,6 @@ export default function Profile() {
       <div className="flex flex-col items-center justify-center h-screen space-y-4">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-500 font-bold animate-pulse">جاري تحميل ملفك الشخصي...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4 p-6 text-center">
-        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
-          <HelpCircle size={32} />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900">عذراً، حدث خطأ</h2>
-        <p className="text-gray-500 max-w-xs">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all"
-        >
-          إعادة المحاولة
-        </button>
       </div>
     );
   }
@@ -271,7 +273,7 @@ export default function Profile() {
               <div className="lg:col-span-8 space-y-8">
                 <ActivityList activities={user.activities} />
                 
-                {Array.isArray(studyPlan) && (
+                {studyPlan && (
                   <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-4">
                     <h3 className="font-bold text-gray-900 flex items-center gap-2 border-b pb-3">
                       <Calendar size={20} className="text-blue-500" />
@@ -281,7 +283,7 @@ export default function Profile() {
                       {studyPlan.map((day: any, i: number) => (
                         <div key={i} className="bg-gray-50 p-4 rounded-xl space-y-2">
                           <h4 className="font-bold text-gray-900">{day.day}</h4>
-                          {Array.isArray(day.slots) && day.slots.map((slot: any, j: number) => (
+                          {day.slots.map((slot: any, j: number) => (
                             <p key={j} className="text-xs text-gray-600">{slot.time}: {slot.subject}</p>
                           ))}
                         </div>

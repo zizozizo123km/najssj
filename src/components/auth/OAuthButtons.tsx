@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { supabase } from '../../lib/supabase';
+import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
 
 interface OAuthButtonsProps {
   onSuccess: () => void;
@@ -8,18 +10,32 @@ interface OAuthButtonsProps {
 }
 
 export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
-  const handleOAuthLogin = async (provider: 'google' | 'facebook') => {
+  const handleOAuthLogin = async (provider: any) => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: window.location.origin + '/profile'
-        }
-      });
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
       
-      if (error) throw error;
+      // Check if user exists in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
       
-      // Note: Success is handled by the auth listener in App.tsx
+      if (!userSnap.exists()) {
+        // Create user document if it doesn't exist
+        await setDoc(userRef, {
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          role: 'student',
+          accountStatus: 'active',
+          createdAt: Date.now(),
+          lastLogin: Date.now()
+        });
+      } else {
+        // Update last login
+        await setDoc(userRef, { lastLogin: Date.now() }, { merge: true });
+      }
+      
+      onSuccess();
     } catch (error: any) {
       console.error(error);
       onError('فشل تسجيل الدخول.');
@@ -39,7 +55,7 @@ export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => handleOAuthLogin('google')}
+          onClick={() => handleOAuthLogin(new GoogleAuthProvider())}
           className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
@@ -49,7 +65,7 @@ export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => handleOAuthLogin('facebook')}
+          onClick={() => handleOAuthLogin(new FacebookAuthProvider())}
           className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook" className="w-5 h-5" />

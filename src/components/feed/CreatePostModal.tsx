@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Image as ImageIcon, Send, Video, Loader2, ChevronDown } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
 import { uploadFile } from '../../services/uploadService';
 
 interface CreatePostModalProps {
@@ -58,8 +59,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!content.trim() || !session?.user) return;
+    if (!content.trim() || !auth.currentUser) return;
 
     setIsSubmitting(true);
 
@@ -87,35 +87,22 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
       };
 
       if (editPost) {
-        const { error } = await supabase
-          .from('posts')
-          .update(postData)
-          .eq('id', editPost.id);
-        
-        if (error) throw error;
-
+        await updateDoc(doc(db, 'posts', editPost.id), postData);
         if (onPostCreated) {
           onPostCreated({ id: editPost.id, ...editPost, ...postData });
         }
       } else {
         const newPost = {
           ...postData,
-          author_name: session.user.user_metadata.full_name || 'مستخدم',
-          author_id: session.user.id,
-          author_avatar: session.user.user_metadata.avatar_url || null,
-          created_at: new Date().toISOString(),
+          author: auth.currentUser.displayName || 'مستخدم',
+          authorId: auth.currentUser.uid,
+          authorAvatar: auth.currentUser.photoURL || null,
+          date: new Date().toLocaleDateString('ar-EG'),
+          createdAt: Date.now(),
         };
-        
-        const { data, error } = await supabase
-          .from('posts')
-          .insert(newPost)
-          .select()
-          .single();
-        
-        if (error) throw error;
-
+        const docRef = await addDoc(collection(db, 'posts'), newPost);
         if (onPostCreated) {
-          onPostCreated(data);
+          onPostCreated({ id: docRef.id, ...newPost });
         }
       }
       

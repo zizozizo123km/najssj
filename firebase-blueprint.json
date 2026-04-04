@@ -98,42 +98,6 @@
         "createdAt": { "type": "number" }
       },
       "required": ["userId", "userName", "score", "totalQuestions", "subject", "createdAt"]
-    },
-    "ChatGroup": {
-      "title": "Chat Group",
-      "description": "A study group for a specific branch and subject.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "branchId": { "type": "string" },
-        "subjectId": { "type": "string" },
-        "memberCount": { "type": "integer" },
-        "lastMessage": {
-          "type": "object",
-          "properties": {
-            "text": { "type": "string" },
-            "sender": { "type": "string" },
-            "timestamp": { "type": "number" }
-          }
-        },
-        "isLocked": { "type": "boolean" }
-      },
-      "required": ["name", "branchId", "subjectId"]
-    },
-    "ChatMessage": {
-      "title": "Chat Message",
-      "description": "A message sent within a chat group.",
-      "type": "object",
-      "properties": {
-        "text": { "type": "string" },
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "senderAvatar": { "type": "string" },
-        "timestamp": { "type": "number" },
-        "type": { "type": "string", "enum": ["text", "image", "ai"] },
-        "imageUrl": { "type": "string" }
-      },
-      "required": ["senderId", "senderName", "timestamp", "type"]
     }
   },
   "firestore": {
@@ -156,14 +120,6 @@
     "/quizSessions/{sessionId}": {
       "schema": "QuizSession",
       "description": "Completed quiz sessions for leaderboard."
-    },
-    "/chatGroups/{groupId}": {
-      "schema": "ChatGroup",
-      "description": "Study groups."
-    },
-    "/chatGroups/{groupId}/messages/{messageId}": {
-      "schema": "ChatMessage",
-      "description": "Messages in a study group."
     }
   }
 }

@@ -1,11 +1,11 @@
-import { Home, Library, MessageSquare, HelpCircle, User, Calendar } from 'lucide-react';
+import { Home, Library, Video, HelpCircle, User, Calendar } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 export default function BottomNav() {
   const navItems = [
     { to: '/', icon: Home, label: 'الرئيسية' },
-    { to: '/groups', icon: MessageSquare, label: 'دردشة' },
     { to: '/library', icon: Library, label: 'المكتبة' },
+    { to: '/planner', icon: Calendar, label: 'المخطط' },
     { to: '/quiz', icon: HelpCircle, label: 'اختبارات' },
     { to: '/profile', icon: User, label: 'بروفايل' },
   ];

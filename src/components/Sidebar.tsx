@@ -1,32 +1,20 @@
-import { useState, useEffect } from 'react';
 import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 
 export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: () => void }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const user = auth.currentUser;
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     navigate('/login');
   };
 
   const menuItems = [
     { name: 'الرئيسية', path: '/', icon: Home },
-    { name: 'مجموعات الدراسة', path: '/groups', icon: MessageSquare },
+    { name: 'الدردشة العامة', path: '/chat', icon: MessageSquare },
     { name: 'الأستاذ الافتراضي', path: '/ai', icon: Brain },
     { name: 'المنشورات', path: '/posts', icon: FileText },
     { name: 'المكتبة', path: '/library', icon: Library },
@@ -76,8 +64,8 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
               className="flex items-center gap-3 px-2 hover:bg-gray-800 p-2 rounded-xl transition-all group"
             >
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500/30 flex-shrink-0 group-hover:border-blue-500 transition-all">
-                {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-400">
                     <UserIcon size={20} />
@@ -85,7 +73,7 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate group-hover:text-blue-400 transition-all">{user.user_metadata?.full_name || 'مستخدم جديد'}</p>
+                <p className="text-sm font-bold truncate group-hover:text-blue-400 transition-all">{user.displayName || 'مستخدم جديد'}</p>
                 <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
               </div>
             </NavLink>

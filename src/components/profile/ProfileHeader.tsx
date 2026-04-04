@@ -1,6 +1,5 @@
 import { User, Mail, GraduationCap, BookOpen, Edit2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { BAC_BRANCHES } from '../../data/baccalaureate';
 
 interface ProfileHeaderProps {
   user: {
@@ -46,7 +45,7 @@ export default function ProfileHeader({ user, onEdit }: ProfileHeaderProps) {
               <Mail size={14} className="text-blue-500" /> {user.email}
             </span>
             <span className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-              <GraduationCap size={14} className="text-purple-500" /> {BAC_BRANCHES.find(b => b.id === user.branch)?.name || user.branch}
+              <GraduationCap size={14} className="text-purple-500" /> {user.branch}
             </span>
           </div>
           <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-3">

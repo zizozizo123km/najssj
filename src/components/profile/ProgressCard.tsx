@@ -11,9 +11,7 @@ interface ProgressCardProps {
 }
 
 export default function ProgressCard({ label, current, total, icon: Icon, color, delay = 0 }: ProgressCardProps) {
-  const percentage = isNaN(current) || isNaN(total) || total === 0 
-    ? 0 
-    : Math.min(100, Math.round((current / total) * 100));
+  const percentage = Math.min(100, Math.round((current / total) * 100));
 
   return (
     <motion.div

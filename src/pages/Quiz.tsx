@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, Star } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
-import { supabase } from '../lib/supabase';
+import { collection, addDoc, query, orderBy, limit, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import { BAC_SUBJECTS } from '../data/baccalaureate';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
@@ -20,50 +21,21 @@ export default function Quiz() {
 
   useEffect(() => {
     const fetchUserBranch = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('branch')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (profile) {
-          const branch = profile.branch || 'sciences';
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const branch = userDoc.data().branch || 'sciences';
           setSubjects(BAC_SUBJECTS[branch] || BAC_SUBJECTS['sciences']);
         }
       }
     };
     fetchUserBranch();
 
-    const fetchLeaderboard = async () => {
-      const { data, error } = await supabase
-        .from('quiz_sessions')
-        .select('*')
-        .order('score', { ascending: false })
-        .limit(3);
-      
-      if (data) {
-        setLeaderboard(data);
-      }
-    };
-
-    fetchLeaderboard();
-
-    const leaderboardChannel = supabase
-      .channel('quiz_sessions_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'quiz_sessions'
-      }, () => {
-        fetchLeaderboard();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(leaderboardChannel);
-    };
+    const q = query(collection(db, 'quizSessions'), orderBy('score', 'desc'), limit(3));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setLeaderboard(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
   }, []);
 
   const generateQuiz = async (chapter: string) => {
@@ -116,14 +88,14 @@ export default function Quiz() {
     setScore(finalScore);
     setView('result');
     
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await supabase.from('quiz_sessions').insert({
-        user_id: session.user.id,
-        user_name: session.user.user_metadata.full_name || 'مستخدم',
+    if (auth.currentUser) {
+      await addDoc(collection(db, 'quizSessions'), {
+        userId: auth.currentUser.uid,
+        userName: auth.currentUser.displayName || 'مستخدم',
         score: finalScore,
-        total_questions: questions.length,
-        subject: selectedSubject.name
+        totalQuestions: questions.length,
+        subject: selectedSubject.name,
+        createdAt: Date.now()
       });
     }
   };

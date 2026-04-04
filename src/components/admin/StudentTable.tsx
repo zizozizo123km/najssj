@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { Trash2, Ban, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import ModalConfirm from './ModalConfirm';
 
@@ -12,39 +13,14 @@ export default function StudentTable() {
   }>({ isOpen: false, action: null, studentId: null });
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('role', 'admin');
-      
-      if (data) {
-        setStudents(data.map(s => ({
-          id: s.id,
-          ...s,
-          displayName: s.display_name,
-          accountStatus: s.account_status,
-          lastLogin: s.updated_at // Using updated_at as proxy for last activity
-        })));
-      }
-    };
-
-    fetchStudents();
-
-    const profilesChannel = supabase
-      .channel('profiles_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'profiles'
-      }, () => {
-        fetchStudents();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(profilesChannel);
-    };
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const usersData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
+        .filter(user => user.role !== 'admin');
+      setStudents(usersData);
+    });
+    return () => unsubscribe();
   }, []);
 
   const requestAction = (id: string, action: 'delete' | 'reject' | 'disable' | 'enable') => {
@@ -57,20 +33,11 @@ export default function StudentTable() {
 
     try {
       if (action === 'delete') {
-        const { error } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', studentId);
-        if (error) throw error;
+        await deleteDoc(doc(db, 'users', studentId));
       } else {
         const status = action === 'reject' ? 'rejected' : action === 'disable' ? 'disabled' : 'active';
-        const { error } = await supabase
-          .from('profiles')
-          .update({ account_status: status })
-          .eq('id', studentId);
-        if (error) throw error;
+        await updateDoc(doc(db, 'users', studentId), { accountStatus: status });
       }
-      setConfirmModal({ isOpen: false, action: null, studentId: null });
     } catch (error) {
       console.error('Error performing action:', error);
       alert('حدث خطأ أثناء تنفيذ العملية');

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { collection, query, onSnapshot, doc } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
 import { LogOut, LayoutDashboard, Users, Settings, Bell } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
 import StudentTable from '../../components/admin/StudentTable';
@@ -19,75 +20,45 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/admin');
-        return;
-      }
+    // Verify admin
+    if (!auth.currentUser || auth.currentUser.email !== 'nacero123@gmail.com') {
+      navigate('/admin');
+      return;
+    }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
+    // Listen to users for stats
+    const q = query(collection(db, 'users'));
+    const unsubscribeUsers = onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => doc.data()).filter(u => u.role !== 'admin');
+      setStats(prev => ({ ...prev, totalStudents: users.length }));
+      // In a real app, calculate active today based on lastLogin field
+    });
 
-      if (profile?.role !== 'admin') {
-        navigate('/admin');
-        return;
-      }
-    };
+    // Listen to notifications
+    const qNotif = query(collection(db, 'notifications'));
+    const unsubscribeNotif = onSnapshot(qNotif, (snapshot) => {
+      setStats(prev => ({ ...prev, notificationsSent: snapshot.size }));
+    });
 
-    checkAdmin();
-
-    // Stats fetching
-    const fetchStats = async () => {
-      // Total students
-      const { count: studentCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .neq('role', 'admin');
-      
-      setStats(prev => ({ ...prev, totalStudents: studentCount || 0 }));
-
-      // Notifications sent
-      const { count: notifCount } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true });
-      
-      setStats(prev => ({ ...prev, notificationsSent: notifCount || 0 }));
-
-      // App status
-      const { data: settings } = await supabase
-        .from('admin_settings')
-        .select('settings')
-        .eq('id', 'general')
-        .single();
-      
-      if (settings) {
+    // Listen to general settings
+    const unsubscribeSettings = onSnapshot(doc(db, 'admin_settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
         setStats(prev => ({ 
           ...prev, 
-          appStatus: settings.settings.maintenanceMode ? 'صيانة' : 'مفتوح' 
+          appStatus: docSnap.data().maintenanceMode ? 'صيانة' : 'مفتوح' 
         }));
       }
-    };
-
-    fetchStats();
-
-    // Realtime subscriptions
-    const profilesChannel = supabase.channel('admin_stats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchStats)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_settings' }, fetchStats)
-      .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(profilesChannel);
+      unsubscribeUsers();
+      unsubscribeNotif();
+      unsubscribeSettings();
     };
   }, [navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await auth.signOut();
     navigate('/admin');
   };
 

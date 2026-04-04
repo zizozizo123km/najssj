@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../firebase';
 import { Shield, Lock, Mail, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -9,34 +10,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
-
-  const handleResendConfirmation = async () => {
-    if (!email) {
-      setError('يرجى إدخال البريد الإلكتروني أولاً.');
-      return;
-    }
-    setResending(true);
-    setError('');
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-      });
-      if (error) {
-        if (error.message.includes('email rate limit exceeded')) {
-          throw new Error('تم تجاوز حد إرسال رسائل البريد الإلكتروني. يرجى المحاولة لاحقاً.');
-        }
-        throw error;
-      }
-      alert('تم إعادة إرسال رابط التأكيد بنجاح. يرجى التحقق من بريدك الإلكتروني.');
-    } catch (err: any) {
-      setError(err.message || 'فشل إعادة إرسال رابط التأكيد.');
-    } finally {
-      setResending(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,39 +18,12 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
-        if (authError.message.includes('Email not confirmed')) {
-          throw new Error('يرجى تأكيد بريدك الإلكتروني أولاً.');
-        }
-        if (authError.message.includes('Invalid login credentials')) {
-          throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-        }
-        if (authError.message.includes('email rate limit exceeded')) {
-          throw new Error('تم تجاوز حد إرسال رسائل البريد الإلكتروني. يرجى المحاولة لاحقاً.');
-        }
-        throw authError;
-      }
-
-      if (data.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-        
-        if (profileError) throw profileError;
-
-        if (profile?.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else {
-          setError('ليس لديك صلاحيات المسؤول.');
-          await supabase.auth.signOut();
-        }
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      if (userCredential.user.email === 'nacero123@gmail.com') {
+        navigate('/admin/dashboard');
+      } else {
+        setError('ليس لديك صلاحيات المسؤول.');
+        await auth.signOut();
       }
     } catch (err: any) {
       console.error(err);
@@ -102,19 +49,8 @@ export default function AdminLogin() {
         </div>
 
         {error && (
-          <div className="space-y-2 mb-6">
-            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm font-bold text-center">
-              {error}
-            </div>
-            {error.includes('تأكيد بريدك الإلكتروني') && (
-              <button
-                onClick={handleResendConfirmation}
-                disabled={resending}
-                className="w-full text-xs font-bold text-blue-400 hover:underline disabled:opacity-50"
-              >
-                {resending ? 'جاري الإرسال...' : 'إعادة إرسال رابط التأكيد'}
-              </button>
-            )}
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm font-bold mb-6 text-center">
+            {error}
           </div>
         )}
 
