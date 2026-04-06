@@ -14,7 +14,7 @@ import {
   Settings as SettingsIcon,
   Calendar,
 } from 'lucide-react';
-import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp } from '../lib/firebase';
+import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
 import ProgressCard from '../components/profile/ProgressCard';
@@ -57,20 +57,39 @@ export default function Profile() {
       return;
     }
 
-    const unsubscribe = onSnapshot(doc(db, 'profiles', auth.currentUser.uid), (snapshot) => {
+    const unsubscribe = onSnapshot(doc(db, 'profiles', auth.currentUser.uid), async (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+        
+        // Calculate real stats
+        const userId = auth.currentUser!.uid;
+        const [summariesSnap, videosSnap, quizzesSnap] = await Promise.all([
+          getDocs(query(collection(db, 'summaries'), where('user_id', '==', userId))),
+          getDocs(query(collection(db, 'watched_videos'), where('user_id', '==', userId))),
+          getDocs(query(collection(db, 'quiz_sessions'), where('user_id', '==', userId)))
+        ]);
+
+        const completedQuizzes = quizzesSnap.size;
+        let totalScore = 0;
+        let totalQuestions = 0;
+        quizzesSnap.forEach(doc => {
+          const d = doc.data();
+          totalScore += d.score || 0;
+          totalQuestions += d.total_questions || 0;
+        });
+        const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
         setUser({
           displayName: data.full_name || auth.currentUser?.displayName || 'مستخدم جديد',
           email: auth.currentUser?.email || null,
           photoURL: data.avatar_url || auth.currentUser?.photoURL || null,
           branch: data.branch || 'sciences',
           favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
-          stats: data.stats || {
-            savedSummaries: 0,
-            analyzedVideos: 0,
-            completedQuizzes: 0,
-            successRate: data.points || 0,
+          stats: {
+            savedSummaries: summariesSnap.size,
+            analyzedVideos: videosSnap.size,
+            completedQuizzes: completedQuizzes,
+            successRate: successRate,
           },
           activities: Array.isArray(data.activities) ? data.activities : []
         });
