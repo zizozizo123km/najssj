@@ -2,8 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Award, Filter, Search, Bookmark } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../lib/firebase';
 import CreatePostModal from '../components/feed/CreatePostModal';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
@@ -23,13 +22,21 @@ export default function Posts() {
   const [filter, setFilter] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const user = auth.currentUser;
+
   useEffect(() => {
-    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'posts'), orderBy('created_at', 'desc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        authorId: doc.data().author_id,
+        authorName: doc.data().author_name,
+        authorAvatar: doc.data().author_avatar,
+        likesCount: doc.data().likes_count,
+        commentsCount: doc.data().comments_count,
+        createdAt: doc.data().created_at?.toDate?.()?.toISOString() || new Date().toISOString()
       }));
       setPosts(postsData);
       setLoading(false);
@@ -54,11 +61,11 @@ export default function Posts() {
       const matchesFilter = filter === 'الكل' 
         ? true 
         : filter === 'ملاحظاتي' 
-          ? post.saved // Note: saved functionality might need real implementation later
+          ? post.saved 
           : post.tags?.includes(filter) || post.subject === filter;
       
       const matchesSearch = post.content?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           post.author?.toLowerCase().includes(searchQuery.toLowerCase());
+                           post.authorName?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
   }, [posts, filter, searchQuery]);
@@ -154,7 +161,7 @@ export default function Posts() {
             className="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:bg-gray-50 transition-colors text-right"
           >
             <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
-              <span className="font-bold">{auth.currentUser?.displayName?.charAt(0) || 'أ'}</span>
+              <span className="font-bold">{user?.displayName?.charAt(0) || 'أ'}</span>
             </div>
             <span className="text-gray-500 font-medium">بم تفكر؟ شارك أفكارك مع زملائك...</span>
           </button>
@@ -175,8 +182,8 @@ export default function Posts() {
                   key={post.id} 
                   item={post} 
                   onClick={() => console.log('Open', post.id)}
-                  onDelete={post.authorId === auth.currentUser?.uid ? handleDeletePost : undefined}
-                  onEdit={post.authorId === auth.currentUser?.uid ? handleEditPost : undefined}
+                  onDelete={post.authorId === user?.uid ? handleDeletePost : undefined}
+                  onEdit={post.authorId === user?.uid ? handleEditPost : undefined}
                 />
               ))}
             </AnimatePresence>

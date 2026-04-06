@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Clock, BookOpen, Save, Sparkles, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Save, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../data/baccalaureate';
+import { auth, db, doc, onSnapshot, updateDoc, serverTimestamp } from '../lib/firebase';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export default function StudyPlanner() {
   const [branch, setBranch] = useState(BAC_BRANCHES[0].id);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [wakeUp, setWakeUp] = useState('07:00');
   const [sleep, setSleep] = useState('23:00');
   const [hours, setHours] = useState(4);
@@ -15,6 +17,29 @@ export default function StudyPlanner() {
   const [weakSubjects, setWeakSubjects] = useState<string[]>([]);
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'profiles', user.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        const profile = snapshot.data();
+        setUserProfile(profile);
+        if (profile.branch) {
+          setBranch(profile.branch);
+        }
+        if (profile.study_plan) {
+          setPlan(profile.study_plan);
+        }
+      }
+    }, (error) => {
+      console.error("Error fetching study plan:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const generatePlan = async () => {
     setLoading(true);
@@ -45,9 +70,21 @@ export default function StudyPlanner() {
     }
   };
 
-  const savePlan = () => {
-    localStorage.setItem('studyPlan', JSON.stringify(plan));
-    alert('Plan saved to profile!');
+  const savePlan = async () => {
+    if (!auth.currentUser || !plan) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
+        study_plan: plan,
+        updated_at: serverTimestamp()
+      });
+      alert('تم حفظ الجدول في ملفك الشخصي بنجاح! ✅');
+    } catch (error) {
+      console.error("Error saving plan:", error);
+      alert('حدث خطأ أثناء حفظ الجدول.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleDay = (day: string) => {
@@ -121,8 +158,9 @@ export default function StudyPlanner() {
               ))}
             </div>
           ))}
-          <button onClick={savePlan} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2">
-            <Save size={20} /> Save to Profile
+          <button onClick={savePlan} disabled={saving} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+            {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+            {saving ? 'جاري الحفظ...' : 'حفظ في الملف الشخصي'}
           </button>
         </div>
       )}

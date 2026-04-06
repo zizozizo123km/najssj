@@ -1,28 +1,75 @@
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
-// Collection: users
-// Document ID: {userId} (Firebase Auth UID)
-// Fields:
-//   - displayName: string (optional) - User's full name
-//   - email: string (required) - User's email address
-//   - photoURL: string (optional) - URL to user's avatar
-//   - branch: string (optional) - Academic branch
-//   - favoriteSubjects: list (optional) - List of favorite subjects
-//   - stats: map (optional) - User statistics
-//   - activities: list (optional) - User activities
-//
-// ===============================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: profiles
+    // Document ID: userId (auth.uid)
+    // Fields:
+    //   - full_name: string (required)
+    //   - branch: string (required)
+    //   - role: string (required, 'student' or 'admin')
+    //   - points: number (optional)
+    //   - avatar_url: string (optional)
+    //   - created_at: timestamp (required)
+    //
+    // Collection: posts
+    // Document ID: auto-generated
+    // Fields:
+    //   - author_id: string (required, auth.uid)
+    //   - author_name: string (required)
+    //   - content: string (required, max 1000 chars)
+    //   - subject: string (required)
+    //   - likes_count: number (optional)
+    //   - created_at: timestamp (required)
+    //
+    // Collection: chat_groups
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //
+    // Collection: chat_messages
+    // Document ID: auto-generated
+    // Fields:
+    //   - group_id: string (required)
+    //   - sender_id: string (required, auth.uid)
+    //   - sender_name: string (required)
+    //   - sender_avatar: string (optional)
+    //   - text: string (required, max 1000 chars)
+    //   - type: string (required, 'text', 'image', 'pdf', 'youtube', 'ai')
+    //   - file_url: string (optional)
+    //   - file_name: string (optional)
+    //   - youtube_id: string (optional)
+    //   - is_pinned: boolean (optional)
+    //   - created_at: timestamp (required)
+    //
+    // Collection: quiz_sessions
+    // Document ID: auto-generated
+    // Fields:
+    //   - user_id: string (required, auth.uid)
+    //   - user_name: string (required)
+    //   - score: number (required)
+    //   - total_questions: number (required)
+    //   - subject: string (required)
+    //   - created_at: timestamp (required)
+    //
+    // Collection: summaries
+    // Document ID: auto-generated
+    // Fields:
+    //   - user_id: string (required, auth.uid)
+    //
+    // Collection: watched_videos
+    // Document ID: auto-generated
+    // Fields:
+    //   - user_id: string (required, auth.uid)
+    //
+    // ===============================================================
 
     // ===============================================================
     // Helper Functions
     // ===============================================================
-
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -32,77 +79,139 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return isAuthenticated() &&
-        ( (userDoc.data != null && userDoc.data.role == 'admin') ||
-          (request.auth.token.email == "dzs325105@gmail.com" && request.auth.token.email_verified == true) ||
-          (request.auth.token.email == "nacero123@gmail.com")
-        );
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "dzs325105@gmail.com" ||
+         request.auth.token.email == "nacero123@gmail.com");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidString(field, min, max) {
+      return request.resource.data[field] is string && 
+             request.resource.data[field].size() >= min && 
+             request.resource.data[field].size() <= max;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidProfile(data) {
+      return hasRequiredFields(['full_name', 'branch', 'role', 'created_at']) &&
+             data.full_name is string && data.full_name.size() > 0 && data.full_name.size() < 100 &&
+             data.branch is string &&
+             data.role in ['student', 'admin'] &&
+             data.created_at is timestamp;
+    }
+
+    function isValidPost(data) {
+      return hasRequiredFields(['author_id', 'author_name', 'content', 'subject', 'created_at']) &&
+             data.author_id == request.auth.uid &&
+             data.author_name is string && data.author_name.size() > 0 && data.author_name.size() < 100 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 1000 &&
+             data.subject is string &&
+             data.created_at is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return hasRequiredFields(['group_id', 'sender_id', 'sender_name', 'text', 'type', 'created_at']) &&
+             data.sender_id == request.auth.uid &&
+             data.sender_name is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
+             data.type in ['text', 'image', 'pdf', 'youtube', 'ai'] &&
+             data.created_at is timestamp;
     }
 
     // ===============================================================
     // Rules
     // ===============================================================
 
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data) && 
+                      (request.resource.data.role == 'student' || isAdmin());
+      allow update: if isOwner(userId) && isValidProfile(request.resource.data) && 
+                      (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPost(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == resource.data.author_id && isValidPost(request.resource.data)) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes_count']) && isAdmin())
+      );
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.author_id || isAdmin());
+
+      match /likes/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+        allow delete: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
+      }
+    }
+
+    match /quiz_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    match /summaries/{summaryId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    match /watched_videos/{videoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    match /chat_groups/{groupId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'memberCount', 'pinnedMessageId'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (request.auth.uid == resource.data.sender_id && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_pinned']) && isAdmin())
+      );
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.sender_id || isAdmin());
+    }
+
     match /admin_settings/general {
-      allow read: if true; // Allow public read for maintenance mode
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    match /admin_settings/{document=**} {
+    match /admin_settings/api_keys {
       allow read: if isAdmin();
       allow write: if isAdmin();
     }
 
     match /notifications/{notificationId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    match /users/{userId} {
-      // Anyone authenticated can read profiles (needed for chat)
-      allow read: if isAuthenticated();
-
-      // Users can create their own profile.
-      allow create: if isOwner(userId);
-
-      // Users can update their own profile.
-      allow update: if isOwner(userId) || isAdmin();
-
-      // Only admins can delete profiles.
+      allow create: if isAdmin();
       allow delete: if isAdmin();
-    }
-
-    match /posts/{postId} {
-      // Anyone authenticated can read posts
-      allow read: if isAuthenticated();
-
-      // Users can create posts
-      allow create: if isAuthenticated();
-
-      // Users can update their own posts
-      allow update: if isAuthenticated() && resource.data.authorId == request.auth.uid;
-
-      // Users can delete their own posts, admins can delete any post
-      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
-
-      match /likes/{likeId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-        allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      }
-
-      match /comments/{commentId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-        allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      }
-    }
-
-    match /quizSessions/{sessionId} {
-      allow read: if isAuthenticated();
-      allow list: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
 
     // Default deny

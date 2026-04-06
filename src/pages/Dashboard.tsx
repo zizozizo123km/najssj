@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Filter, Plus, Sparkles, TrendingUp, BookOpen, Video, FileText, AlertTriangle, X } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where } from '../lib/firebase';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
@@ -15,14 +14,27 @@ export default function Dashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [stats, setStats] = useState({ summaries: 0, videos: 0, successRate: 0 });
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUserId(user?.uid ?? null);
+      if (user) {
+        fetchStudentStats(user.uid);
+      }
+    });
+
+    const q = query(collection(db, 'posts'), orderBy('created_at', 'desc'));
+    const unsubscribePosts = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        createdAt: doc.data().created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+        authorId: doc.data().author_id,
+        authorName: doc.data().author_name,
+        authorAvatar: doc.data().author_avatar
       }));
       setFeed(postsData);
       setLoading(false);
@@ -31,8 +43,37 @@ export default function Dashboard() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribePosts();
+    };
   }, []);
+
+  const fetchStudentStats = async (userId: string) => {
+    try {
+      // Fetch summaries
+      const summariesSnapshot = await getDocs(query(collection(db, 'summaries'), where('user_id', '==', userId)));
+      const summariesCount = summariesSnapshot.size;
+
+      // Fetch videos watched
+      const videosSnapshot = await getDocs(query(collection(db, 'watched_videos'), where('user_id', '==', userId)));
+      const videosCount = videosSnapshot.size;
+
+      // Fetch quiz sessions
+      const quizSnapshot = await getDocs(query(collection(db, 'quiz_sessions'), where('user_id', '==', userId)));
+      let totalScore = 0;
+      let totalQuestions = 0;
+      quizSnapshot.forEach(doc => {
+        totalScore += doc.data().score;
+        totalQuestions += doc.data().total_questions;
+      });
+      const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
+      setStats({ summaries: summariesCount, videos: videosCount, successRate });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
 
   const handleCreatePost = (newPost: any) => {
     // The feed will automatically update via onSnapshot
@@ -90,15 +131,15 @@ export default function Dashboard() {
             
             <div className="grid grid-cols-3 gap-4 pt-2 border-t border-white/10">
               <div className="text-center">
-                <p className="text-lg font-black">12</p>
+                <p className="text-lg font-black">{stats.summaries}</p>
                 <p className="text-[10px] text-blue-100 font-bold">ملخصات</p>
               </div>
               <div className="text-center border-x border-white/10">
-                <p className="text-lg font-black">25</p>
+                <p className="text-lg font-black">{stats.videos}</p>
                 <p className="text-[10px] text-blue-100 font-bold">فيديوهات</p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-black">85%</p>
+                <p className="text-lg font-black">{stats.successRate}%</p>
                 <p className="text-[10px] text-blue-100 font-bold">نجاح</p>
               </div>
             </div>
@@ -138,13 +179,13 @@ export default function Dashboard() {
       <div className="space-y-6 px-2">
         <AnimatePresence mode="popLayout">
           {filteredFeed.map((item, index) => (
-            <FeedCard 
-              key={item.id} 
-              item={item} 
-              onClick={() => console.log('Open', item.id)}
-              onDelete={item.authorId === auth.currentUser?.uid ? handleDeletePost : undefined}
-              onEdit={item.authorId === auth.currentUser?.uid ? handleEditPost : undefined}
-            />
+              <FeedCard 
+                key={item.id} 
+                item={item} 
+                onClick={() => console.log('Open', item.id)}
+                onDelete={item.authorId === currentUserId ? handleDeletePost : undefined}
+                onEdit={item.authorId === currentUserId ? handleEditPost : undefined}
+              />
           ))}
         </AnimatePresence>
       </div>

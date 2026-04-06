@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Search, User, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { auth } from '../../firebase';
+import { auth, onAuthStateChanged } from '../../lib/firebase';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -8,7 +9,15 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
-  const user = auth.currentUser;
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3 flex items-center justify-between border-b border-gray-100 shadow-sm shrink-0">

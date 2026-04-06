@@ -83,3 +83,38 @@ export const BAC_SUBJECTS: Record<string, { id: string, name: string, icon: stri
     { id: 'islamic', name: 'العلوم الإسلامية', icon: '🕌', color: 'bg-green-100 text-green-600' },
   ],
 };
+
+export const BAC_CHAPTERS: Record<string, { id: string, name: string, description: string, difficulty: 'easy' | 'medium' | 'hard' }[]> = {
+  'math': [
+    { id: 'functions', name: 'الدوال العددية', description: 'دراسة النهايات، الاستمرارية والاشتقاق', difficulty: 'medium' },
+    { id: 'sequences', name: 'المتتاليات العددية', description: 'المتتاليات الحسابية والهندسية والبرهان بالتراجع', difficulty: 'medium' },
+    { id: 'complex', name: 'الأعداد المركبة', description: 'الشكل الجبري، المثلثي والأساسي والتحويلات النقطية', difficulty: 'hard' },
+    { id: 'probability', name: 'الاحتمالات', description: 'العد، الاحتمالات الشرطية وقوانين الاحتمال', difficulty: 'medium' },
+  ],
+  'physics': [
+    { id: 'chemical_tracking', name: 'المتابعة الزمنية لتحول كيميائي', description: 'طرق المتابعة، سرعة التفاعل والعوامل الحركية', difficulty: 'medium' },
+    { id: 'nuclear', name: 'التحولات النووية', description: 'النشاط الإشعاعي، التناقص الإشعاعي والطاقة النووية', difficulty: 'easy' },
+    { id: 'electricity', name: 'الظواهر الكهربائية', description: 'دارة RC ودارة RL', difficulty: 'medium' },
+    { id: 'mechanics', name: 'الميكانيك', description: 'حركة الكواكب، السقوط الشاقولي والقذائف', difficulty: 'hard' },
+  ],
+  'svt': [
+    { id: 'protein_synthesis', name: 'تركيب البروتين', description: 'الاستنساخ والترجمة', difficulty: 'easy' },
+    { id: 'protein_function', name: 'العلاقة بين بنية ووظيفة البروتين', description: 'مستويات البنية الفراغية', difficulty: 'medium' },
+    { id: 'enzymes', name: 'النشاط الإنزيمي للبروتينات', description: 'تأثير درجة الحرارة والحموضة', difficulty: 'medium' },
+    { id: 'immunity', name: 'دور البروتينات في الدفاع عن الذات', description: 'المناعة الخلطية والخلوية', difficulty: 'hard' },
+  ],
+  'philosophy': [
+    { id: 'perception', name: 'الإحساس والإدراك', description: 'العلاقة بين الإحساس والإدراك', difficulty: 'medium' },
+    { id: 'memory', name: 'الذاكرة والخيال', description: 'طبيعة الذاكرة وأنواع الخيال', difficulty: 'medium' },
+    { id: 'language', name: 'اللغة والفكر', description: 'العلاقة بين الدال والمدلول', difficulty: 'hard' },
+  ],
+  'history': [
+    { id: 'cold_war', name: 'بروز الصراع وتشكل العالم', description: 'الحرب الباردة ومعايير تشكل العالم', difficulty: 'medium' },
+    { id: 'algerian_revolution', name: 'العمل المسلح ورد فعل الاستعمار', description: 'الثورة التحريرية الكبرى', difficulty: 'hard' },
+  ],
+  'islamic': [
+    { id: 'creed', name: 'العقيدة الإسلامية وأثرها', description: 'أثر العقيدة على الفرد والمجتمع', difficulty: 'easy' },
+    { id: 'quran_mind', name: 'موقف القرآن من العقل', description: 'أهمية العقل وحدود استخدامه', difficulty: 'easy' },
+    { id: 'health', name: 'الصحة النفسية والجسمية', description: 'كيفية الحفاظ على الصحة في الإسلام', difficulty: 'easy' },
+  ],
+};

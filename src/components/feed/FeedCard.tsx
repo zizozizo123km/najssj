@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send } from 'lucide-react';
-import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, orderBy } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { auth, db, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, getDocs, setDoc } from '../../lib/firebase';
 import ActionButtons from './ActionButtons';
 
 interface FeedCardProps {
@@ -11,7 +10,7 @@ interface FeedCardProps {
     type: 'video' | 'book' | 'post';
     title: string;
     content: string;
-    author: string;
+    authorName: string;
     authorId?: string;
     authorAvatar?: string;
     thumbnail?: string;
@@ -32,44 +31,50 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
+  const user = auth.currentUser;
+
   useEffect(() => {
     if (!item.id) return;
 
-    // Listen to likes
-    const likesRef = collection(db, 'posts', item.id, 'likes');
-    const unsubscribeLikes = onSnapshot(likesRef, (snapshot) => {
+    // Subscribe to likes
+    const likesQuery = collection(db, 'posts', item.id, 'likes');
+    const unsubscribeLikes = onSnapshot(likesQuery, (snapshot) => {
       setLikesCount(snapshot.size);
-      if (auth.currentUser) {
-        const myLike = snapshot.docs.find(d => d.data().userId === auth.currentUser?.uid);
-        setIsLikedByMe(!!myLike);
+      if (user) {
+        setIsLikedByMe(snapshot.docs.some(doc => doc.id === user.uid));
       }
     });
 
-    // Listen to comments
-    const commentsRef = collection(db, 'posts', item.id, 'comments');
-    const q = query(commentsRef, orderBy('createdAt', 'asc'));
-    const unsubscribeComments = onSnapshot(q, (snapshot) => {
-      setComments(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    // Subscribe to comments
+    const commentsQuery = query(collection(db, 'posts', item.id, 'comments'), orderBy('created_at', 'asc'));
+    const unsubscribeComments = onSnapshot(commentsQuery, (snapshot) => {
+      const commentsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        authorName: doc.data().author_name,
+        authorAvatar: doc.data().author_avatar,
+        createdAt: doc.data().created_at
+      }));
+      setComments(commentsData);
     });
 
     return () => {
       unsubscribeLikes();
       unsubscribeComments();
     };
-  }, [item.id]);
+  }, [item.id, user]);
 
   const handleLike = async () => {
-    if (!auth.currentUser) return alert('يجب تسجيل الدخول أولاً');
+    if (!user) return alert('يجب تسجيل الدخول أولاً');
     
-    const likeDocRef = doc(db, 'posts', item.id, 'likes', auth.currentUser.uid);
     try {
+      const likeRef = doc(db, 'posts', item.id, 'likes', user.uid);
       if (isLikedByMe) {
-        await deleteDoc(likeDocRef);
+        await deleteDoc(likeRef);
       } else {
-        await setDoc(likeDocRef, {
-          postId: item.id,
-          userId: auth.currentUser.uid,
-          createdAt: Date.now()
+        await setDoc(likeRef, {
+          user_id: user.uid,
+          created_at: serverTimestamp()
         });
       }
     } catch (error) {
@@ -79,18 +84,21 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser || !newComment.trim()) return;
+    if (!user || !newComment.trim()) return;
 
     setIsSubmittingComment(true);
     try {
+      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+      const profileData = profileDoc.exists() ? profileDoc.data() : null;
+
       await addDoc(collection(db, 'posts', item.id, 'comments'), {
-        postId: item.id,
-        userId: auth.currentUser.uid,
-        author: auth.currentUser.displayName || 'مستخدم',
-        authorAvatar: auth.currentUser.photoURL || null,
+        user_id: user.uid,
+        author_name: profileData?.full_name || user.displayName || user.email?.split('@')[0] || 'مستخدم',
+        author_avatar: user.photoURL || null,
         content: newComment.trim(),
-        createdAt: Date.now()
+        created_at: serverTimestamp()
       });
+      
       setNewComment('');
     } catch (error) {
       console.error("Error adding comment:", error);
@@ -124,14 +132,14 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full border-2 border-gray-50 overflow-hidden shadow-sm">
             <img 
-              src={item.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.author}`} 
-              alt={item.author}
+              src={item.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.authorName}`} 
+              alt={item.authorName}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
           </div>
           <div>
-            <h4 className="text-sm font-black text-gray-900">{item.author}</h4>
+            <h4 className="text-sm font-black text-gray-900">{item.authorName}</h4>
             <p className="text-[10px] font-bold text-gray-400">{item.date}</p>
           </div>
         </div>
@@ -262,13 +270,13 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                 comments.map(comment => (
                   <div key={comment.id} className="flex gap-3">
                     <img 
-                      src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author}`} 
-                      alt={comment.author}
+                      src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorName}`} 
+                      alt={comment.authorName}
                       className="w-8 h-8 rounded-full bg-gray-100 object-cover"
                       referrerPolicy="no-referrer"
                     />
                     <div className="flex-1 bg-gray-50 rounded-2xl p-3 rounded-tr-none">
-                      <h5 className="text-xs font-black text-gray-900 mb-1">{comment.author}</h5>
+                      <h5 className="text-xs font-black text-gray-900 mb-1">{comment.authorName}</h5>
                       <p className="text-sm text-gray-700 font-medium">{comment.content}</p>
                     </div>
                   </div>
@@ -276,7 +284,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
               )}
             </div>
 
-            <form onSubmit={handleAddComment} className="flex gap-2">
+            <form onSubmit={handleAddComment} className="flex gap-2 relative">
               <input 
                 type="text"
                 value={newComment}
@@ -284,6 +292,18 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                 placeholder="اكتب تعليقاً..."
                 className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
               />
+              <button 
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+              >
+                <Smile size={20} />
+              </button>
+              {showEmojiPicker && (
+                <div className="absolute bottom-12 right-0 z-50">
+                  <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} />
+                </div>
+              )}
               <button 
                 type="submit"
                 disabled={!newComment.trim() || isSubmittingComment}

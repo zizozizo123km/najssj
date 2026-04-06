@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { auth, db, signInWithEmailAndPassword, doc, getDoc, signOut } from '../../lib/firebase';
 import { Shield, Lock, Mail, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -19,11 +18,18 @@ export default function AdminLogin() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (userCredential.user.email === 'nacero123@gmail.com') {
-        navigate('/admin/dashboard');
-      } else {
-        setError('ليس لديك صلاحيات المسؤول.');
-        await auth.signOut();
+      const user = userCredential.user;
+
+      if (user) {
+        const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+        const profile = profileDoc.data();
+
+        if (profile?.role === 'admin' || user.email === "dzs325105@gmail.com") {
+          navigate('/admin/dashboard');
+        } else {
+          setError('ليس لديك صلاحيات المسؤول.');
+          await signOut(auth);
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -49,7 +55,7 @@ export default function AdminLogin() {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm font-bold mb-6 text-center">
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-xl text-sm font-bold text-center mb-6">
             {error}
           </div>
         )}

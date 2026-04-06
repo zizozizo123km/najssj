@@ -1,11 +1,19 @@
+import { useState, useEffect } from 'react';
 import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
+import { auth, onAuthStateChanged, signOut } from '../lib/firebase';
 
 export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: () => void }) {
   const navigate = useNavigate();
-  const user = auth.currentUser;
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -14,7 +22,7 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
 
   const menuItems = [
     { name: 'الرئيسية', path: '/', icon: Home },
-    { name: 'الدردشة العامة', path: '/chat', icon: MessageSquare },
+    { name: 'مجموعات الدراسة', path: '/groups', icon: MessageSquare },
     { name: 'الأستاذ الافتراضي', path: '/ai', icon: Brain },
     { name: 'المنشورات', path: '/posts', icon: FileText },
     { name: 'المكتبة', path: '/library', icon: Library },

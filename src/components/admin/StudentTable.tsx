@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, collection, query, where, onSnapshot, doc, deleteDoc, updateDoc } from '../../lib/firebase';
 import { Trash2, Ban, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import ModalConfirm from './ModalConfirm';
 
@@ -13,13 +12,20 @@ export default function StudentTable() {
   }>({ isOpen: false, action: null, studentId: null });
 
   useEffect(() => {
-    const q = query(collection(db, 'users'));
+    const q = query(collection(db, 'profiles'), where('role', '!=', 'admin'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usersData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
-        .filter(user => user.role !== 'admin');
-      setStudents(usersData);
+      const studentsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        displayName: doc.data().full_name,
+        accountStatus: doc.data().account_status,
+        lastLogin: doc.data().created_at?.toDate?.()?.toISOString() || null
+      }));
+      setStudents(studentsData);
+    }, (error) => {
+      console.error('Error fetching students:', error);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -33,11 +39,12 @@ export default function StudentTable() {
 
     try {
       if (action === 'delete') {
-        await deleteDoc(doc(db, 'users', studentId));
+        await deleteDoc(doc(db, 'profiles', studentId));
       } else {
         const status = action === 'reject' ? 'rejected' : action === 'disable' ? 'disabled' : 'active';
-        await updateDoc(doc(db, 'users', studentId), { accountStatus: status });
+        await updateDoc(doc(db, 'profiles', studentId), { account_status: status });
       }
+      setConfirmModal({ isOpen: false, action: null, studentId: null });
     } catch (error) {
       console.error('Error performing action:', error);
       alert('حدث خطأ أثناء تنفيذ العملية');

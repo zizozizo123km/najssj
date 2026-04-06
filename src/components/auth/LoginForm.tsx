@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, BookOpen } from 'lucide-react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { auth, db, doc, setDoc, serverTimestamp } from '../../lib/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Loader from './Loader';
 import ErrorMessage from './ErrorMessage';
 
@@ -23,32 +22,39 @@ const BRANCHES = [
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [branch, setBranch] = useState(BRANCHES[0]);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       if (isRegistering) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // Save additional user data to Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          email: email,
+        const user = userCredential.user;
+        
+        // Create profile in Firestore
+        await setDoc(doc(db, 'profiles', user.uid), {
+          full_name: fullName,
           branch: branch,
           role: 'student',
-          accountStatus: 'active',
-          createdAt: Date.now(),
-          lastLogin: Date.now()
+          points: 0,
+          created_at: serverTimestamp()
         });
+        
+        onSuccess();
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        onSuccess();
       }
       
       if (rememberMe) {
@@ -56,19 +62,15 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       } else {
         localStorage.removeItem('rememberedUser');
       }
-      
-      onSuccess();
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('خطأ في البريد الإلكتروني أو كلمة المرور.');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setError('البريد الإلكتروني مستخدم بالفعل.');
-      } else if (err.code === 'auth/weak-password') {
-        setError('كلمة المرور ضعيفة جداً.');
-      } else {
-        setError('حدث خطأ ما. يرجى المحاولة مرة أخرى.');
+      let message = 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
+      if (err.code === 'auth/email-already-in-use') message = 'البريد الإلكتروني مستخدم بالفعل.';
+      if (err.code === 'auth/weak-password') message = 'كلمة المرور ضعيفة جداً.';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        message = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
       }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -99,6 +101,12 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       </div>
 
       <ErrorMessage message={error} />
+      
+      {successMessage && (
+        <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-green-700 text-sm font-bold text-center">
+          {successMessage}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -114,6 +122,22 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             required
           />
         </div>
+
+        {isRegistering && (
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+              <UserPlus size={16} className="text-blue-500" /> الاسم الكامل
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="أدخل اسمك الكامل"
+              className="w-full p-4 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-right"
+              required
+            />
+          </div>
+        )}
 
         {isRegistering && (
           <div className="space-y-2">

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, onSnapshot, doc } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { auth, db, collection, query, where, onSnapshot, doc, getDoc, getCountFromServer, signOut, onAuthStateChanged, Timestamp } from '../../lib/firebase';
 import { LogOut, LayoutDashboard, Users, Settings, Bell } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
 import StudentTable from '../../components/admin/StudentTable';
@@ -20,45 +19,71 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // Verify admin
-    if (!auth.currentUser || auth.currentUser.email !== 'nacero123@gmail.com') {
-      navigate('/admin');
-      return;
-    }
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        navigate('/admin');
+        return;
+      }
 
-    // Listen to users for stats
-    const q = query(collection(db, 'users'));
-    const unsubscribeUsers = onSnapshot(q, (snapshot) => {
-      const users = snapshot.docs.map(doc => doc.data()).filter(u => u.role !== 'admin');
-      setStats(prev => ({ ...prev, totalStudents: users.length }));
-      // In a real app, calculate active today based on lastLogin field
-    });
-
-    // Listen to notifications
-    const qNotif = query(collection(db, 'notifications'));
-    const unsubscribeNotif = onSnapshot(qNotif, (snapshot) => {
-      setStats(prev => ({ ...prev, notificationsSent: snapshot.size }));
-    });
-
-    // Listen to general settings
-    const unsubscribeSettings = onSnapshot(doc(db, 'admin_settings', 'general'), (docSnap) => {
-      if (docSnap.exists()) {
-        setStats(prev => ({ 
-          ...prev, 
-          appStatus: docSnap.data().maintenanceMode ? 'صيانة' : 'مفتوح' 
-        }));
+      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+      if (!profileDoc.exists() || profileDoc.data().role !== 'admin') {
+        // Double check with email if profile doesn't exist yet or role is not set
+        if (user.email !== "dzs325105@gmail.com" && user.email !== "nacero123@gmail.com") {
+          navigate('/admin');
+          return;
+        }
       }
     });
 
+    // Stats fetching
+    const fetchStats = async () => {
+      // Total students
+      const studentQuery = query(collection(db, 'profiles'), where('role', '!=', 'admin'));
+      const studentSnapshot = await getCountFromServer(studentQuery);
+      setStats(prev => ({ ...prev, totalStudents: studentSnapshot.data().count }));
+
+      // Active Today (simplified: profiles created today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activeQuery = query(
+        collection(db, 'profiles'), 
+        where('role', '!=', 'admin'),
+        where('created_at', '>=', Timestamp.fromDate(today))
+      );
+      const activeSnapshot = await getCountFromServer(activeQuery);
+      setStats(prev => ({ ...prev, activeToday: activeSnapshot.data().count }));
+
+      // Notifications sent
+      const notifQuery = collection(db, 'notifications');
+      const notifSnapshot = await getCountFromServer(notifQuery);
+      setStats(prev => ({ ...prev, notificationsSent: notifSnapshot.data().count }));
+
+      // App status
+      const unsubscribeSettings = onSnapshot(doc(db, 'admin_settings', 'general'), (doc) => {
+        if (doc.exists()) {
+          setStats(prev => ({ 
+            ...prev, 
+            appStatus: doc.data().maintenance_mode ? 'صيانة' : 'مفتوح' 
+          }));
+        }
+      }, (error) => {
+        console.error("Error fetching admin settings:", error);
+      });
+
+      return unsubscribeSettings;
+    };
+
+    let unsubscribeSettings: any;
+    fetchStats().then(unsub => unsubscribeSettings = unsub);
+
     return () => {
-      unsubscribeUsers();
-      unsubscribeNotif();
-      unsubscribeSettings();
+      unsubscribeAuth();
+      if (unsubscribeSettings) unsubscribeSettings();
     };
   }, [navigate]);
 
   const handleLogout = async () => {
-    await auth.signOut();
+    await signOut(auth);
     navigate('/admin');
   };
 

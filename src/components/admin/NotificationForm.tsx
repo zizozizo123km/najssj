@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Send, Loader2, BellRing } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { auth, db, collection, addDoc, serverTimestamp } from '../../lib/firebase';
 
 export default function NotificationForm() {
   const [title, setTitle] = useState('');
@@ -18,12 +17,14 @@ export default function NotificationForm() {
         // In a real app, this would send only to the admin's device token
         alert(`🔔 إشعار تجريبي:\n\nالعنوان: ${title}\nالرسالة: ${message}`);
       } else {
+        const user = auth.currentUser;
         await addDoc(collection(db, 'notifications'), {
           title,
           message,
-          createdAt: Date.now(),
-          sentBy: auth.currentUser?.email || 'Admin'
+          sent_by: user?.email || 'Admin',
+          created_at: serverTimestamp()
         });
+        
         setTitle('');
         setMessage('');
         alert('تم إرسال الإشعار بنجاح للجميع!');

@@ -1,8 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { auth, db, doc, getDoc, setDoc, serverTimestamp, googleProvider, signInWithPopup } from '../../lib/firebase';
 
 interface OAuthButtonsProps {
   onSuccess: () => void;
@@ -10,35 +8,30 @@ interface OAuthButtonsProps {
 }
 
 export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) {
-  const handleOAuthLogin = async (provider: any) => {
+  const handleGoogleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      // Check if user exists in Firestore
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
+      // Check if profile exists, if not create it
+      const profileRef = doc(db, 'profiles', user.uid);
+      const profileSnap = await getDoc(profileRef);
       
-      if (!userSnap.exists()) {
-        // Create user document if it doesn't exist
-        await setDoc(userRef, {
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
+      if (!profileSnap.exists()) {
+        await setDoc(profileRef, {
+          full_name: user.displayName || user.email?.split('@')[0] || 'مستخدم جديد',
+          branch: 'علوم تجريبية', // Default branch
           role: 'student',
-          accountStatus: 'active',
-          createdAt: Date.now(),
-          lastLogin: Date.now()
+          points: 0,
+          avatar_url: user.photoURL,
+          created_at: serverTimestamp()
         });
-      } else {
-        // Update last login
-        await setDoc(userRef, { lastLogin: Date.now() }, { merge: true });
       }
       
       onSuccess();
     } catch (error: any) {
       console.error(error);
-      onError('فشل تسجيل الدخول.');
+      onError('فشل تسجيل الدخول عبر Google.');
     }
   };
 
@@ -51,25 +44,15 @@ export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) 
         <span className="relative px-4 text-xs text-gray-500 bg-white uppercase">أو عبر</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="flex justify-center">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => handleOAuthLogin(new GoogleAuthProvider())}
-          className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+          onClick={handleGoogleLogin}
+          className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all w-full max-w-xs"
         >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-          <span className="text-sm font-bold text-gray-700">Google</span>
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => handleOAuthLogin(new FacebookAuthProvider())}
-          className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook" className="w-5 h-5" />
-          <span className="text-sm font-bold text-gray-700">Facebook</span>
+          <span className="text-sm font-bold text-gray-700">تسجيل الدخول عبر Google</span>
         </motion.button>
       </div>
     </div>

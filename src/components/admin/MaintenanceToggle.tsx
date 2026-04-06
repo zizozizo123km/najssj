@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Power, Loader2 } from 'lucide-react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, doc, getDoc, setDoc, onSnapshot } from '../../lib/firebase';
 
 export default function MaintenanceToggle() {
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -9,27 +8,27 @@ export default function MaintenanceToggle() {
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const docRef = doc(db, 'admin_settings', 'general');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setIsMaintenance(docSnap.data().maintenanceMode || false);
-        }
-      } catch (error) {
-        console.error('Error fetching maintenance status:', error);
-      } finally {
-        setLoading(false);
+    const unsubscribe = onSnapshot(doc(db, 'admin_settings', 'general'), (doc) => {
+      if (doc.exists()) {
+        setIsMaintenance(doc.data().maintenance_mode || false);
       }
-    };
-    fetchStatus();
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching maintenance status:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleToggle = async () => {
     setToggling(true);
     const newStatus = !isMaintenance;
     try {
-      await setDoc(doc(db, 'admin_settings', 'general'), { maintenanceMode: newStatus }, { merge: true });
+      await setDoc(doc(db, 'admin_settings', 'general'), { 
+        maintenance_mode: newStatus 
+      }, { merge: true });
+      
       setIsMaintenance(newStatus);
     } catch (error) {
       console.error('Error toggling maintenance mode:', error);

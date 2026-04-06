@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Image as ImageIcon, Send, Video, Loader2, ChevronDown } from 'lucide-react';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
+import { X, Image as ImageIcon, Send, Video, Loader2, ChevronDown, Smile } from 'lucide-react';
+import { auth, db, doc, setDoc, addDoc, collection, serverTimestamp, updateDoc, getDoc } from '../../lib/firebase';
 import { uploadFile } from '../../services/uploadService';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -23,18 +23,15 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubjects, setShowSubjects] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && editPost) {
       setContent(editPost.content || '');
-      setSubject(editPost.tags?.[0] || '');
-      setMediaPreview(editPost.thumbnail || null);
-      if (editPost.type === 'video' && editPost.thumbnail && !editPost.thumbnail.includes('cloudinary')) {
-        setVideoUrl(editPost.thumbnail);
-        setShowUrlInput(true);
-      }
+      setSubject(editPost.subject || '');
+      setMediaPreview(editPost.author_avatar || null); // Note: using avatar as placeholder for media preview in edit
     } else if (isOpen && !editPost) {
       setContent('');
       setSubject('');
@@ -44,6 +41,10 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
       setShowUrlInput(false);
     }
   }, [isOpen, editPost]);
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setContent((prev) => prev + emojiData.emoji);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,51 +60,43 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !auth.currentUser) return;
+    const user = auth.currentUser;
+    if (!content.trim() || !user) return;
 
     setIsSubmitting(true);
 
     try {
-      let thumbnailUrl = editPost?.thumbnail || null;
+      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+      const profileData = profileDoc.exists() ? profileDoc.data() : null;
+
+      let thumbnailUrl = editPost?.author_avatar || null;
       let isVideoPost = editPost?.type === 'video' || false;
 
       if (media) {
         thumbnailUrl = await uploadFile(media);
         isVideoPost = media.type.startsWith('video');
-      } else if (videoUrl.trim() && videoUrl.trim() !== editPost?.thumbnail) {
-        thumbnailUrl = await uploadFile(videoUrl.trim(), 'video');
-        isVideoPost = true;
-      } else if (!mediaPreview) {
-        thumbnailUrl = null;
-        isVideoPost = false;
       }
 
-      const postData = {
+      const postData: any = {
         type: isVideoPost ? 'video' : 'post',
-        title: subject ? `سؤال في ${subject}` : 'منشور',
         content,
-        tags: subject ? [subject] : [],
+        subject: subject || 'أخرى',
+        author_id: user.uid,
+        author_name: profileData?.full_name || user.displayName || user.email?.split('@')[0] || 'مستخدم',
+        author_avatar: user.photoURL || null,
         thumbnail: thumbnailUrl,
+        updated_at: serverTimestamp()
       };
 
       if (editPost) {
         await updateDoc(doc(db, 'posts', editPost.id), postData);
-        if (onPostCreated) {
-          onPostCreated({ id: editPost.id, ...editPost, ...postData });
-        }
+        if (onPostCreated) onPostCreated({ id: editPost.id, ...postData });
       } else {
-        const newPost = {
-          ...postData,
-          author: auth.currentUser.displayName || 'مستخدم',
-          authorId: auth.currentUser.uid,
-          authorAvatar: auth.currentUser.photoURL || null,
-          date: new Date().toLocaleDateString('ar-EG'),
-          createdAt: Date.now(),
-        };
-        const docRef = await addDoc(collection(db, 'posts'), newPost);
-        if (onPostCreated) {
-          onPostCreated({ id: docRef.id, ...newPost });
-        }
+        postData.created_at = serverTimestamp();
+        postData.likes_count = 0;
+        postData.comments_count = 0;
+        const docRef = await addDoc(collection(db, 'posts'), postData);
+        if (onPostCreated) onPostCreated({ id: docRef.id, ...postData });
       }
       
       // Reset state
@@ -193,7 +186,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
               </div>
 
               {/* Text Area */}
-              <div>
+              <div className="relative">
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -201,6 +194,18 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                   className="w-full h-32 p-4 bg-gray-50 border border-gray-200 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm font-medium"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="absolute bottom-4 right-4 p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                >
+                  <Smile size={20} />
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute bottom-16 right-0 z-50">
+                    <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} />
+                  </div>
+                )}
               </div>
 
               {/* Video URL Input */}

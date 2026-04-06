@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import MessageBubble from '../components/teacher/MessageBubble';
 import TeacherAvatar from '../components/teacher/TeacherAvatar';
+import { auth, db, doc, onSnapshot } from '../lib/firebase';
+import { BAC_SUBJECTS, BAC_BRANCHES } from '../data/baccalaureate';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
@@ -15,12 +17,9 @@ interface Message {
   timestamp: Date;
 }
 
-const SUBJECTS = [
-  'رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 
-  'تربية إسلامية', 'فلسفة', 'لغة ألمانية'
-];
-
 export default function VirtualTeacher() {
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -31,10 +30,32 @@ export default function VirtualTeacher() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState(SUBJECTS[0]);
+  const [selectedSubject, setSelectedSubject] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'profiles', user.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        const profile = snapshot.data();
+        setUserProfile(profile);
+        const branch = profile.branch || 'sciences';
+        const subjects = BAC_SUBJECTS[branch] || BAC_SUBJECTS['sciences'];
+        setAvailableSubjects(subjects);
+        if (!selectedSubject && subjects.length > 0) {
+          setSelectedSubject(subjects[0].name);
+        }
+      }
+    }, (error) => {
+      console.error("Error fetching profile for virtual teacher:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -71,16 +92,19 @@ export default function VirtualTeacher() {
     setLoading(true);
 
     try {
+      const branchName = BAC_BRANCHES.find(b => b.id === userProfile?.branch)?.name || 'علوم تجريبية';
+      const studentName = userProfile?.full_name || 'تلميذي العزيز';
+
       const chat = ai.chats.create({
         model: "gemini-3-flash-preview",
         config: {
           systemInstruction: `أنت "الأستاذ الافتراضي" (Virtual Teacher)، خبير في المناهج التعليمية الجزائرية للبكالوريا. 
+          أنت تخاطب الطالب "${studentName}" من شعبة "${branchName}".
           مهمتك هي مساعدة الطلاب في فهم الدروس، حل التمارين خطوة بخطوة، وتقديم ملخصات واختبارات سريعة.
-          المواد المدعومة: ${SUBJECTS.join(', ')}.
+          المواد المتاحة للطالب حالياً: ${availableSubjects.map(s => s.name).join(', ')}.
           أسلوبك: مشجع، واضح، تعليمي، ومبسط. 
           هام جداً: تكلم بلهجة جزائرية (دارجة) مفهومة ومحببة للطلاب لتكون قريباً منهم، لكن حافظ على دقة المصطلحات العلمية والتقنية.
           عند حل التمارين، لا تعطي الحل مباشرة، بل اشرح الخطوات والقواعد المستخدمة.
-          إذا أرسل الطالب رابط يوتيوب، حاول تحليل المحتوى (إذا كان متاحاً في السياق) أو تقديم نصائح عامة حول الموضوع.
           المادة الحالية المختارة: ${selectedSubject}.`
         }
       });
@@ -153,7 +177,7 @@ export default function VirtualTeacher() {
           onChange={(e) => setSelectedSubject(e.target.value)}
           className="text-xs bg-gray-100 border-none rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 font-bold text-gray-700"
         >
-          {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+          {availableSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>
       </header>
 

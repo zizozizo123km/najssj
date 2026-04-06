@@ -2,124 +2,120 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "Extended user profile data stored in Firestore.",
+      "description": "Stores user profile information",
       "type": "object",
       "properties": {
-        "displayName": { "type": "string", "description": "User's full name" },
-        "email": { "type": "string", "format": "email", "description": "User's email address" },
-        "photoURL": { "type": "string", "description": "URL to user's avatar" },
-        "branch": { "type": "string", "description": "Academic branch (e.g., Science, Math)" },
-        "favoriteSubjects": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of favorite subjects"
-        },
-        "stats": {
-          "type": "object",
-          "properties": {
-            "savedSummaries": { "type": "integer", "description": "Number of saved summaries" },
-            "analyzedVideos": { "type": "integer", "description": "Number of analyzed videos" },
-            "completedQuizzes": { "type": "integer", "description": "Number of completed quizzes" },
-            "successRate": { "type": "number", "description": "Average success rate percentage" }
-          }
-        },
-        "activities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "type": { "type": "string", "enum": ["video", "quiz", "summary", "post"] },
-              "title": { "type": "string" },
-              "date": { "type": "string", "format": "date" },
-              "score": { "type": "string" }
-            }
-          }
-        }
+        "full_name": { "type": "string", "description": "User's full name" },
+        "branch": { "type": "string", "description": "User's branch/specialty" },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "User's role" },
+        "points": { "type": "integer", "description": "User's points" },
+        "avatar_url": { "type": "string", "description": "User's avatar URL" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Profile creation timestamp" }
       },
-      "required": ["email"]
+      "required": ["full_name", "branch", "role"]
     },
     "Post": {
       "title": "Post",
-      "description": "A feed post created by a user.",
+      "description": "A post in the community feed",
       "type": "object",
       "properties": {
-        "type": { "type": "string", "enum": ["video", "book", "post"] },
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "author": { "type": "string" },
-        "authorId": { "type": "string" },
-        "authorAvatar": { "type": "string" },
-        "thumbnail": { "type": "string" },
-        "date": { "type": "string" },
-        "createdAt": { "type": "number" },
-        "tags": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "author_id": { "type": "string", "description": "UID of the author" },
+        "author_name": { "type": "string", "description": "Name of the author" },
+        "content": { "type": "string", "description": "Content of the post" },
+        "subject": { "type": "string", "description": "Subject of the post" },
+        "likes_count": { "type": "integer", "description": "Number of likes" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Post creation timestamp" }
       },
-      "required": ["type", "title", "content", "author", "authorId", "createdAt"]
+      "required": ["author_id", "content", "subject", "created_at"]
     },
-    "Like": {
-      "title": "Like",
-      "description": "A like on a post.",
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A message in a chat group",
       "type": "object",
       "properties": {
-        "postId": { "type": "string" },
-        "userId": { "type": "string" },
-        "createdAt": { "type": "number" }
+        "group_id": { "type": "string", "description": "ID of the chat group" },
+        "sender_id": { "type": "string", "description": "UID of the sender" },
+        "sender_name": { "type": "string", "description": "Name of the sender" },
+        "text": { "type": "string", "description": "Message text" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Message creation timestamp" }
       },
-      "required": ["postId", "userId", "createdAt"]
+      "required": ["group_id", "sender_id", "text", "created_at"]
     },
-    "Comment": {
-      "title": "Comment",
-      "description": "A comment on a post.",
+    "AdminSettings": {
+      "title": "Admin Settings",
+      "description": "Global application settings",
       "type": "object",
       "properties": {
-        "postId": { "type": "string" },
-        "userId": { "type": "string" },
-        "author": { "type": "string" },
-        "authorAvatar": { "type": "string" },
-        "content": { "type": "string" },
-        "createdAt": { "type": "number" }
-      },
-      "required": ["postId", "userId", "author", "content", "createdAt"]
+        "maintenance_mode": { "type": "boolean", "description": "Whether the app is in maintenance mode" }
+      }
     },
     "QuizSession": {
       "title": "Quiz Session",
-      "description": "A quiz session completed by a user.",
+      "description": "A completed quiz session",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
-        "score": { "type": "integer" },
-        "totalQuestions": { "type": "integer" },
-        "subject": { "type": "string" },
-        "createdAt": { "type": "number" }
+        "user_id": { "type": "string", "description": "UID of the user" },
+        "user_name": { "type": "string", "description": "Name of the user" },
+        "score": { "type": "integer", "description": "Quiz score" },
+        "total_questions": { "type": "integer", "description": "Total number of questions" },
+        "subject": { "type": "string", "description": "Subject of the quiz" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Session creation timestamp" }
       },
-      "required": ["userId", "userName", "score", "totalQuestions", "subject", "createdAt"]
+      "required": ["user_id", "score", "total_questions", "subject", "created_at"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A system notification",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Notification title" },
+        "message": { "type": "string", "description": "Notification message" },
+        "type": { "type": "string", "enum": ["info", "warning", "success", "error"], "description": "Notification type" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Notification creation timestamp" }
+      },
+      "required": ["title", "message", "type", "created_at"]
+    },
+    "ApiKeys": {
+      "title": "API Keys",
+      "description": "Stores API keys for various services",
+      "type": "object",
+      "properties": {
+        "settings": { "type": "object", "description": "API keys settings" }
+      }
     }
   },
   "firestore": {
-    "/users/{userId}": {
+    "/profiles/{userId}": {
       "schema": "UserProfile",
-      "description": "User profile documents indexed by their Firebase Auth UID."
+      "description": "User profile documents"
     },
     "/posts/{postId}": {
       "schema": "Post",
-      "description": "Feed posts created by users."
+      "description": "Community posts"
     },
-    "/posts/{postId}/likes/{likeId}": {
-      "schema": "Like",
-      "description": "Likes on a post."
-    },
-    "/posts/{postId}/comments/{commentId}": {
-      "schema": "Comment",
-      "description": "Comments on a post."
-    },
-    "/quizSessions/{sessionId}": {
+    "/quiz_sessions/{sessionId}": {
       "schema": "QuizSession",
-      "description": "Completed quiz sessions for leaderboard."
+      "description": "Quiz results"
+    },
+    "/chat_groups/{groupId}": {
+      "schema": { "type": "object", "properties": { "name": { "type": "string" } } },
+      "description": "Chat groups"
+    },
+    "/chat_groups/{groupId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Messages within a chat group"
+    },
+    "/admin_settings/general": {
+      "schema": "AdminSettings",
+      "description": "Global app settings"
+    },
+    "/admin_settings/api_keys": {
+      "schema": "ApiKeys",
+      "description": "API keys settings"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "System notifications"
     }
   }
 }
