@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut, MoreVertical } from 'lucide-react';
+import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut, MoreVertical, Calendar } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, signOut } from '../lib/firebase';
 
@@ -29,6 +29,7 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
     { name: 'ملاحظاتي', path: '/posts?filter=saved', icon: Bookmark },
     { name: 'محلل يوتيوب الذكي', path: '/youtube', icon: Youtube },
     { name: 'اختبارات', path: '/quiz', icon: BookOpen },
+    { name: 'جدول الدراسة', path: '/planner', icon: Calendar },
     { name: 'الملف الشخصي', path: '/profile', icon: UserIcon },
     { name: 'البحث', path: '/search', icon: Search },
   ];
