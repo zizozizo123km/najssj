@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut } from 'lucide-react';
+import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut, MoreVertical } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, signOut } from '../lib/firebase';
 
@@ -35,6 +35,16 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
 
   return (
     <>
+      {/* Three-dot button for mobile */}
+      {!isOpen && (
+        <button 
+          onClick={toggle} 
+          className="fixed top-4 left-4 z-40 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md text-gray-800 md:hidden"
+        >
+          <MoreVertical size={24} />
+        </button>
+      )}
+
       {/* Overlay for mobile */}
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggle} />

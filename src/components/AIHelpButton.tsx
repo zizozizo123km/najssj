@@ -14,7 +14,7 @@ export const AIHelpButton: React.FC<AIHelpButtonProps> = ({ onClick, isLoading }
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       disabled={isLoading}
-      className="fixed bottom-24 right-6 z-20 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all border border-white/20"
+      className="fixed bottom-32 right-6 z-20 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all border border-white/20"
     >
       {isLoading ? (
         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

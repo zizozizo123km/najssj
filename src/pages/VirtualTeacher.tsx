@@ -20,6 +20,7 @@ interface Message {
 export default function VirtualTeacher() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
+// ... inside VirtualTeacher component ...
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -30,6 +31,7 @@ export default function VirtualTeacher() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(''); // Added error state
   const [selectedSubject, setSelectedSubject] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -78,6 +80,24 @@ export default function VirtualTeacher() {
     const textToSend = textOverride || input;
     if (!textToSend.trim() && !image) return;
 
+    // Word count check
+    const wordCount = textToSend.trim().split(/\s+/).length;
+    if (wordCount > 50) {
+      setError('عذراً، يجب ألا يتجاوز سؤالك 50 كلمة.');
+      return;
+    }
+
+    // Daily limit check
+    const today = new Date().toDateString();
+    const dailyUsage = JSON.parse(localStorage.getItem('ai_usage') || '{"date": "", "count": 0}');
+    
+    if (dailyUsage.date === today && dailyUsage.count >= 20) {
+      setError('لقد وصلت إلى الحد الأقصى للأسئلة اليومية (20 سؤالاً).');
+      return;
+    }
+
+    setError(''); // Clear errors
+    
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -90,6 +110,10 @@ export default function VirtualTeacher() {
     setInput('');
     setImage(null);
     setLoading(true);
+
+    // Update usage count
+    const newCount = dailyUsage.date === today ? dailyUsage.count + 1 : 1;
+    localStorage.setItem('ai_usage', JSON.stringify({ date: today, count: newCount }));
 
     try {
       const branchName = BAC_BRANCHES.find(b => b.id === userProfile?.branch)?.name || 'علوم تجريبية';
@@ -105,7 +129,8 @@ export default function VirtualTeacher() {
           أسلوبك: مشجع، واضح، تعليمي، ومبسط. 
           هام جداً: تكلم بلهجة جزائرية (دارجة) مفهومة ومحببة للطلاب لتكون قريباً منهم، لكن حافظ على دقة المصطلحات العلمية والتقنية.
           عند حل التمارين، لا تعطي الحل مباشرة، بل اشرح الخطوات والقواعد المستخدمة.
-          المادة الحالية المختارة: ${selectedSubject}.`
+          المادة الحالية المختارة: ${selectedSubject}.
+          قيد هام: يجب ألا يتجاوز ردك 50 كلمة كحد أقصى.`
         }
       });
 
@@ -148,6 +173,7 @@ export default function VirtualTeacher() {
     }
   };
 
+
   const quickAction = (type: 'explain' | 'exercise' | 'quiz') => {
     let prompt = '';
     switch (type) {
@@ -159,7 +185,7 @@ export default function VirtualTeacher() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 font-sans max-w-4xl mx-auto shadow-xl rounded-2xl overflow-hidden border border-gray-200">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-gray-50 font-sans max-w-4xl mx-auto shadow-xl rounded-2xl overflow-hidden border border-gray-200">
       {/* Header */}
       <header className="bg-white p-4 border-b flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
@@ -230,6 +256,11 @@ export default function VirtualTeacher() {
 
       {/* Input Area */}
       <div className="p-4 bg-white border-t">
+        {error && (
+          <div className="bg-red-100 text-red-700 p-2 rounded-lg text-xs text-center mb-2">
+            {error}
+          </div>
+        )}
         {image && (
           <div className="relative inline-block mb-3">
             <img src={image} alt="Preview" className="w-20 h-20 object-cover rounded-lg border-2 border-blue-500 shadow-md" />
