@@ -24,7 +24,7 @@ export default function AdminLogin() {
         const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
         const profile = profileDoc.data();
 
-        if (profile?.role === 'admin' || user.email === "dzs325105@gmail.com") {
+        if (profile?.role === 'admin' || user.email === "dzs325105@gmail.com" || user.email === "nacero123@gmail.com") {
           navigate('/admin/dashboard');
         } else {
           setError('ليس لديك صلاحيات المسؤول.');
