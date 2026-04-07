@@ -29,7 +29,7 @@ export default function YouTubeAnalysis() {
         return alert('رابط غير صالح');
       }
     } else {
-      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc&type=video&maxResults=5`);
       const data = await res.json();
       if (data.items && data.items.length > 0) {
         videoId = data.items[0].id.videoId;
@@ -40,7 +40,7 @@ export default function YouTubeAnalysis() {
     }
 
     // 1. Fetch Video Details
-    const res = await fetch(`/api/youtube/video-details?id=${videoId}`);
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc`);
     const data = await res.json();
     const videoDetails = data.items[0];
     setVideo(videoDetails);
