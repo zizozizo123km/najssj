@@ -13,19 +13,18 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function getYouTubeApiKey(): Promise<string | null> {
+  const hardcodedKey = "AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc";
   try {
     const doc = await db.collection("admin_settings").doc("api_keys").get();
     if (doc.exists) {
       const settings = doc.data()?.settings;
       const key = settings?.youtube?.[0]?.api_key || null;
-      console.log("Fetched YouTube API key from Firestore:", key ? "Key found" : "Key not found");
-      return key;
+      return key || hardcodedKey;
     }
-    console.log("admin_settings/api_keys document does not exist");
   } catch (error) {
-    console.error("Error fetching YouTube API key from Firestore:", error);
+    // Silent failure, falling back to hardcoded key
   }
-  return process.env.YOUTUBE_API_KEY || null;
+  return hardcodedKey;
 }
 
 async function startServer() {
@@ -46,8 +45,13 @@ async function startServer() {
         `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=${apiKey}&type=video&maxResults=5`
       );
       const data = await response.json();
+      if (!response.ok) {
+        console.error("YouTube Search API Error:", data);
+        return res.status(response.status).json({ error: "YouTube API Error", details: data });
+      }
       res.json(data);
     } catch (error) {
+      console.error("Failed to fetch from YouTube:", error);
       res.status(500).json({ error: "Failed to fetch from YouTube" });
     }
   });
@@ -63,8 +67,13 @@ async function startServer() {
         `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${apiKey}`
       );
       const data = await response.json();
+      if (!response.ok) {
+        console.error("YouTube Video Details API Error:", data);
+        return res.status(response.status).json({ error: "YouTube API Error", details: data });
+      }
       res.json(data);
     } catch (error) {
+      console.error("Failed to fetch video details:", error);
       res.status(500).json({ error: "Failed to fetch video details" });
     }
   });
