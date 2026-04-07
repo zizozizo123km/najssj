@@ -43,7 +43,7 @@ export default function YouTubeVideoAnalyzer() {
         ? activeQuery + " بكالوريا الجزائر" 
         : `درس ${filter} ${activeQuery} بكالوريا الجزائر`;
         
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(finalQuery)}&key=AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc&type=video&maxResults=5`);
+      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(finalQuery)}`);
       const data = await res.json();
       if (data.items) {
         setVideos(data.items.map((item: any) => ({
