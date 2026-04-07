@@ -42,23 +42,18 @@ export default function ApiKeysForm() {
     fetchKeys();
   }, []);
 
-  // Auto-save effect
-  useEffect(() => {
-    if (loading) return;
-
-    const timer = setTimeout(async () => {
-      setSaving(true);
-      try {
-        await setDoc(doc(db, 'admin_settings', 'api_keys'), { settings: keys });
-      } catch (error) {
-        console.error('Error auto-saving API keys:', error);
-      } finally {
-        setSaving(false);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [keys, loading]);
+  const saveKeys = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'admin_settings', 'api_keys'), { settings: keys });
+      alert('تم حفظ الإعدادات بنجاح!');
+    } catch (error) {
+      console.error('Error saving API keys:', error);
+      alert('حدث خطأ أثناء حفظ الإعدادات.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const [testStatus, setTestStatus] = useState<{ loading: boolean; message: string; success: boolean | null }>({
     loading: false,
@@ -111,7 +106,13 @@ export default function ApiKeysForm() {
     <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-black text-white">إدارة الإعدادات و API</h2>
-        {saving && <div className="text-xs text-green-400 font-bold animate-pulse">جاري الحفظ...</div>}
+        <button 
+          onClick={saveKeys}
+          disabled={saving}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+        </button>
       </div>
 
       <div className="space-y-8">

@@ -17,8 +17,11 @@ async function getYouTubeApiKey(): Promise<string | null> {
     const doc = await db.collection("admin_settings").doc("api_keys").get();
     if (doc.exists) {
       const settings = doc.data()?.settings;
-      return settings?.youtube?.[0]?.api_key || null;
+      const key = settings?.youtube?.[0]?.api_key || null;
+      console.log("Fetched YouTube API key from Firestore:", key ? "Key found" : "Key not found");
+      return key;
     }
+    console.log("admin_settings/api_keys document does not exist");
   } catch (error) {
     console.error("Error fetching YouTube API key from Firestore:", error);
   }
