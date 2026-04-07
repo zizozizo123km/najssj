@@ -56,7 +56,7 @@ export default function StudyPlanner() {
         Return as JSON array of objects with keys: day, slots (array of {time, subject, topic}).`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });

@@ -96,7 +96,7 @@ export default function YouTubeVideoAnalyzer() {
         Return as JSON with keys: summary, clarifications, boardExplanation, keyPoints, importantNotes, timestamps.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -142,7 +142,7 @@ export default function YouTubeVideoAnalyzer() {
 
       const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });

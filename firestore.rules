@@ -204,7 +204,7 @@ service cloud.firestore {
     }
 
     match /admin_settings/api_keys {
-      allow read: if isAdmin();
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 

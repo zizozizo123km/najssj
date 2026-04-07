@@ -42,7 +42,7 @@ export default function ReelCard({ reel, isActive }: ReelCardProps) {
         Return as JSON with keys: summary, keyPoints, importantNotes.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -77,7 +77,7 @@ export default function ReelCard({ reel, isActive }: ReelCardProps) {
 
       const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });

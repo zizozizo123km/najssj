@@ -119,7 +119,7 @@ export default function VirtualTeacher() {
       const studentName = userProfile?.full_name || 'تلميذي العزيز';
 
       const chat = ai.chats.create({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         config: {
           systemInstruction: `أنت "الأستاذ الافتراضي" (Virtual Teacher)، خبير في المناهج التعليمية الجزائرية للبكالوريا. 
           أنت تخاطب الطالب "${studentName}" من شعبة "${branchName}".
@@ -137,7 +137,7 @@ export default function VirtualTeacher() {
       if (userMessage.image) {
         const base64Data = userMessage.image.split(',')[1];
         response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-2.5-flash",
           contents: [
             {
               parts: [

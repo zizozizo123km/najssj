@@ -70,7 +70,7 @@ export default function Quiz() {
     try {
       const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: `Generate 5 multiple choice questions for Baccalaureate level in Algeria for chapter: ${chapter.name} in ${selectedSubject.name}. 
         Return as JSON array of objects with:
         - question (string)
@@ -170,7 +170,7 @@ export default function Quiz() {
 
       const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
       });
       setExplanation(response.text || "عذراً، لم أتمكن من توليد الشرح.");

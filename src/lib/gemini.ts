@@ -11,7 +11,7 @@ export async function getGeminiClient() {
 
 export async function askAI(prompt: string, context: string = "") {
   const ai = await getGeminiClient();
-  const model = "gemini-3.1-flash-lite-preview";
+  const model = "gemini-2.5-flash";
 
   const systemInstruction = `
     You are an AI assistant for Algerian Baccalaureate students. 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send } from 'lucide-react';
-import { auth, db, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, getDocs, setDoc } from '../../lib/firebase';
+import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send, Smile } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
+import { auth, db, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, getDocs, setDoc, getDoc } from '../../lib/firebase';
 import ActionButtons from './ActionButtons';
 
 interface FeedCardProps {
@@ -29,7 +30,13 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
   const [comments, setComments] = useState<any[]>([]);
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  const handleEmojiClick = (emojiObject: any) => { 
+    setNewComment(prev => prev + emojiObject.emoji); 
+    setShowEmojiPicker(false); 
+  };
 
   const user = auth.currentUser;
 

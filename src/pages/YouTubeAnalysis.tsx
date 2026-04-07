@@ -56,7 +56,7 @@ export default function YouTubeAnalysis() {
       Return as JSON with keys: summary, keyConcepts (array), watchTimeRecommendation (string).`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });

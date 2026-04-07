@@ -123,7 +123,7 @@ export default function ApiKeysForm() {
               <div className="mb-4 p-4 bg-gray-800 rounded-xl space-y-3">
                 <label className="text-xs font-bold text-gray-400">اختر النموذج</label>
                 <select
-                  value={keys.gemini?.[0]?.model_name || 'gemini-3.1-flash-lite-preview'}
+                  value={keys.gemini?.[0]?.model_name || 'gemini-1.5-flash'}
                   onChange={(e) => handleChange('gemini', 0, 'model_name', e.target.value)}
                   className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
                 >
