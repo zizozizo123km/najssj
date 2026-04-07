@@ -178,7 +178,7 @@ service cloud.firestore {
 
     match /chat_groups/{groupId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin();
+      allow create: if isAdmin() || (isAuthenticated() && groupId.matches('^branch_.*$') && request.resource.data.keys().hasAll(['name', 'branch', 'memberCount', 'isLocked', 'createdAt']));
       allow update: if isAuthenticated() && (
         isAdmin() || 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'memberCount', 'pinnedMessageId'])

@@ -25,6 +25,7 @@ interface UserProfile {
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
+  avatarId?: string | null;
   branch: string;
   favoriteSubjects: string[];
   stats: {
@@ -83,6 +84,7 @@ export default function Profile() {
           displayName: data.full_name || auth.currentUser?.displayName || 'مستخدم جديد',
           email: auth.currentUser?.email || null,
           photoURL: data.avatar_url || auth.currentUser?.photoURL || null,
+          avatarId: data.avatar_id || null,
           branch: data.branch || 'sciences',
           favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
           stats: {
@@ -99,6 +101,7 @@ export default function Profile() {
           displayName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'مستخدم جديد',
           email: auth.currentUser?.email || null,
           photoURL: auth.currentUser?.photoURL || null,
+          avatarId: null,
           branch: 'sciences',
           favoriteSubjects: ['الرياضيات', 'الفيزياء'],
           stats: {
@@ -131,6 +134,7 @@ export default function Profile() {
         await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
           full_name: newData.displayName,
           avatar_url: newData.photoURL,
+          avatar_id: newData.avatarId || null,
           branch: newData.branch,
           favorite_subjects: newData.favoriteSubjects,
           updated_at: serverTimestamp()

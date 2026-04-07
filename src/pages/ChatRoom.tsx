@@ -113,7 +113,7 @@ export default function ChatRoom() {
     // Online Members Listener (simplified for demo)
     const usersRef = collection(db, 'profiles');
     const unsubscribeUsers = onSnapshot(query(usersRef, limit(20)), (snapshot) => {
-      const members = snapshot.docs.map(doc => doc.data() as UserProfile);
+      const members = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile));
       setOnlineMembers(members);
     });
 

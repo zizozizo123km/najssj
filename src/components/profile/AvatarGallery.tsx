@@ -3,7 +3,7 @@ import { Check } from 'lucide-react';
 
 interface AvatarGalleryProps {
   selectedAvatar: string | null;
-  onSelect: (url: string) => void;
+  onSelect: (url: string, id: string) => void;
 }
 
 const avatars = [
@@ -22,9 +22,10 @@ export default function AvatarGallery({ selectedAvatar, onSelect }: AvatarGaller
         {avatars.map((avatar) => (
           <motion.button
             key={avatar.id}
+            type="button"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onSelect(avatar.url)}
+            onClick={() => onSelect(avatar.url, avatar.id)}
             className={`relative aspect-square rounded-2xl overflow-hidden border-4 transition-all ${
               selectedAvatar === avatar.url 
                 ? 'border-blue-600 ring-4 ring-blue-100' 

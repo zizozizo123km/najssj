@@ -9,6 +9,7 @@ interface SettingsFormProps {
     displayName: string | null;
     email: string | null;
     photoURL: string | null;
+    avatarId?: string | null;
     branch: string;
     favoriteSubjects: string[];
   };
@@ -21,6 +22,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     displayName: user.displayName || '',
     email: user.email || '',
     photoURL: user.photoURL || '',
+    avatarId: user.avatarId || '',
     branch: user.branch || BAC_BRANCHES[0].id,
     favoriteSubjects: user.favoriteSubjects || [],
     notifications: true,
@@ -58,7 +60,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           </label>
           <AvatarGallery 
             selectedAvatar={formData.photoURL} 
-            onSelect={(url) => setFormData({ ...formData, photoURL: url })} 
+            onSelect={(url, id) => setFormData({ ...formData, photoURL: url, avatarId: id })} 
           />
         </div>
 

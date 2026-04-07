@@ -31,7 +31,6 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
     { name: 'اختبارات', path: '/quiz', icon: BookOpen },
     { name: 'جدول الدراسة', path: '/planner', icon: Calendar },
     { name: 'الملف الشخصي', path: '/profile', icon: UserIcon },
-    { name: 'البحث', path: '/search', icon: Search },
   ];
 
   return (
