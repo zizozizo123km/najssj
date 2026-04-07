@@ -2,8 +2,28 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import admin from "firebase-admin";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+});
+const db = admin.firestore();
+
+async function getYouTubeApiKey(): Promise<string | null> {
+  try {
+    const doc = await db.collection("admin_settings").doc("api_keys").get();
+    if (doc.exists) {
+      const settings = doc.data()?.settings;
+      return settings?.youtube?.[0]?.api_key || null;
+    }
+  } catch (error) {
+    console.error("Error fetching YouTube API key from Firestore:", error);
+  }
+  return process.env.YOUTUBE_API_KEY || null;
+}
 
 async function startServer() {
   const app = express();
@@ -14,7 +34,7 @@ async function startServer() {
   // API routes
   app.get("/api/youtube/search", async (req, res) => {
     const query = req.query.q as string;
-    const apiKey = process.env.YOUTUBE_API_KEY;
+    const apiKey = await getYouTubeApiKey();
     if (!apiKey) {
       return res.status(500).json({ error: "YOUTUBE_API_KEY is not set" });
     }
@@ -31,7 +51,7 @@ async function startServer() {
 
   app.get("/api/youtube/video-details", async (req, res) => {
     const videoId = req.query.id as string;
-    const apiKey = process.env.YOUTUBE_API_KEY;
+    const apiKey = await getYouTubeApiKey();
     if (!apiKey) {
       return res.status(500).json({ error: "YOUTUBE_API_KEY is not set" });
     }
