@@ -19,12 +19,10 @@ async function getYouTubeApiKey(): Promise<string | null> {
     if (doc.exists) {
       const settings = doc.data()?.settings;
       const key = settings?.youtube?.[0]?.api_key || null;
-      console.log("Fetched YouTube API key from Firestore:", key ? "Key found" : "Key not found");
       return key || hardcodedKey;
     }
-    console.log("admin_settings/api_keys document does not exist, using hardcoded fallback");
   } catch (error) {
-    console.error("Error fetching YouTube API key from Firestore, using hardcoded fallback:", error);
+    // Silent failure, falling back to hardcoded key
   }
   return hardcodedKey;
 }
