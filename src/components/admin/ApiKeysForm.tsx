@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { db, doc, getDoc, setDoc } from '../../lib/firebase';
 
 const API_TYPES = [
