@@ -1,13 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
+import { getApiKey } from "./apiKeys";
 
-const apiKey = process.env.GEMINI_API_KEY;
+export async function getGeminiClient() {
+  const apiKey = await getApiKey('gemini');
+  if (!apiKey) {
+    throw new Error("Gemini API key is missing in Firestore.");
+  }
+  return new GoogleGenAI({ apiKey });
+}
 
 export async function askAI(prompt: string, context: string = "") {
-  if (!apiKey) {
-    throw new Error("Gemini API key is missing.");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = await getGeminiClient();
   const model = "gemini-3.1-flash-lite-preview";
 
   const systemInstruction = `

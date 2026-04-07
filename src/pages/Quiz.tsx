@@ -12,11 +12,10 @@ import {
   Lightbulb,
   ChevronLeft
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
-import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from '../lib/firebase';
+import { Type } from "@google/genai";
+import { getGeminiClient } from '../lib/gemini';
+import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_CHAPTERS, BAC_BRANCHES } from '../data/baccalaureate';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 type View = 'subjects' | 'chapters' | 'quiz' | 'result';
 
@@ -69,6 +68,7 @@ export default function Quiz() {
     setLoading(true);
     setSelectedChapter(chapter);
     try {
+      const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Generate 5 multiple choice questions for Baccalaureate level in Algeria for chapter: ${chapter.name} in ${selectedSubject.name}. 
@@ -168,6 +168,7 @@ export default function Quiz() {
       
       Please explain my mistakes simply in Arabic and give me tips to improve.`;
 
+      const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,

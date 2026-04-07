@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, BookOpen, Save, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { getGeminiClient } from '../lib/gemini';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../data/baccalaureate';
 import { auth, db, doc, onSnapshot, updateDoc, serverTimestamp } from '../lib/firebase';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export default function StudyPlanner() {
   const [branch, setBranch] = useState(BAC_BRANCHES[0].id);
@@ -44,6 +42,7 @@ export default function StudyPlanner() {
   const generatePlan = async () => {
     setLoading(true);
     try {
+      const ai = await getGeminiClient();
       const branchName = BAC_BRANCHES.find(b => b.id === branch)?.name;
       const prompt = `Create a personalized study schedule for a Baccalaureate student in Algeria.
         Branch: ${branchName}

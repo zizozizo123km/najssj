@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, Sparkles, BrainCircuit, RotateCcw, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { getGeminiClient } from '../lib/gemini';
 import VideoList from '../components/youtube/VideoList';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import VideoSummary from '../components/youtube/VideoSummary';
 import QuizSection from '../components/youtube/QuizSection';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 interface Video {
   id: string;
@@ -79,6 +77,7 @@ export default function YouTubeVideoAnalyzer() {
     setRating(0);
 
     try {
+      const ai = await getGeminiClient();
       const prompt = `Analyze this YouTube video for a Baccalaureate student in Algeria.
         IMPORTANT: Focus strictly on the academic content of the lesson. Provide a clear, structured, and concise summary of the lesson content itself. Avoid narrative style or mimicking a teacher's speech. Use technical terms and educational content accurate for the Algerian Baccalaureate.
         
@@ -141,6 +140,7 @@ export default function YouTubeVideoAnalyzer() {
         
         Return ONLY a JSON array of objects with keys: id, type ('mcq', 'true-false', 'short-answer'), question, options (for mcq), correctAnswer, explanation. Do not include any other text.`;
 
+      const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,

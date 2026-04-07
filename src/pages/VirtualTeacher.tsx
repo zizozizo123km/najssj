@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Image as ImageIcon, Sparkles, BookOpen, HelpCircle, Save, Trash2, Loader2, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
+import { getGeminiClient } from '../lib/gemini';
 import MessageBubble from '../components/teacher/MessageBubble';
 import TeacherAvatar from '../components/teacher/TeacherAvatar';
 import { auth, db, doc, onSnapshot } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_BRANCHES } from '../data/baccalaureate';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 interface Message {
   id: string;
@@ -20,7 +18,7 @@ interface Message {
 export default function VirtualTeacher() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
-// ... inside VirtualTeacher component ...
+  // ... inside VirtualTeacher component ...
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -116,6 +114,7 @@ export default function VirtualTeacher() {
     localStorage.setItem('ai_usage', JSON.stringify({ date: today, count: newCount }));
 
     try {
+      const ai = await getGeminiClient();
       const branchName = BAC_BRANCHES.find(b => b.id === userProfile?.branch)?.name || 'علوم تجريبية';
       const studentName = userProfile?.full_name || 'تلميذي العزيز';
 
@@ -172,7 +171,6 @@ export default function VirtualTeacher() {
       setLoading(false);
     }
   };
-
 
   const quickAction = (type: 'explain' | 'exercise' | 'quiz') => {
     let prompt = '';
