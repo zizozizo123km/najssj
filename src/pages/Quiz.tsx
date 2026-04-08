@@ -32,6 +32,7 @@ export default function Quiz() {
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explainingMistakes, setExplainingMistakes] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -66,6 +67,7 @@ export default function Quiz() {
 
   const generateQuiz = async (chapter: any) => {
     setLoading(true);
+    setError(null);
     setSelectedChapter(chapter);
     try {
       const { client: ai, model } = await getGeminiConfig();
@@ -102,7 +104,20 @@ export default function Quiz() {
       setView('quiz');
     } catch (error: any) {
       console.error("Quiz generation error:", error);
-      alert("حدث خطأ أثناء توليد الاختبار: " + (error.message || "حاول مرة أخرى"));
+      let errorMessage = "حدث خطأ أثناء توليد الاختبار. حاول مرة أخرى.";
+      if (error.message && error.message.includes("429")) {
+        errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+      } else if (error.message) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.error && parsedError.error.code === 429) {
+            errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+          }
+        } catch (e) {
+          // Ignore parse error
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -266,6 +281,12 @@ export default function Quiz() {
                   <p className="text-xs text-slate-500">اختر فصلاً لبدء الاختبار</p>
                 </div>
               </div>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 p-4 rounded-2xl text-sm font-bold text-center mb-4">
+                  {error}
+                </div>
+              )}
 
               {(BAC_CHAPTERS[selectedSubject.id] || []).map((c) => (
                 <button 

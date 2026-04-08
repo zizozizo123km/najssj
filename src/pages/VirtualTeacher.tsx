@@ -159,12 +159,25 @@ export default function VirtualTeacher() {
       };
 
       setMessages(prev => [...prev, botMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
+      let errorMessage = 'عذراً، أواجه مشكلة في الاتصال حالياً. يرجى المحاولة مرة أخرى.';
+      if (error.message && error.message.includes("429")) {
+        errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+      } else if (error.message) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.error && parsedError.error.code === 429) {
+            errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+          }
+        } catch (e) {
+          // Ignore parse error
+        }
+      }
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'model',
-        text: 'عذراً، أواجه مشكلة في الاتصال حالياً. يرجى المحاولة مرة أخرى.',
+        text: errorMessage,
         timestamp: new Date()
       }]);
     } finally {

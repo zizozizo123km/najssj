@@ -132,7 +132,21 @@ export default function YouTubeVideoAnalyzer() {
       }
     } catch (error: any) {
       console.error("Analysis error:", error);
-      setError(error.message || 'حدث خطأ أثناء التحليل');
+      let errorMessage = "حدث خطأ أثناء التحليل";
+      if (error.message && error.message.includes("429")) {
+        errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+      } else if (error.message) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.error && parsedError.error.code === 429) {
+            errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+          }
+        } catch (e) {
+          // Ignore parse error
+          errorMessage = error.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setAnalyzing(false);
     }
@@ -181,7 +195,21 @@ export default function YouTubeVideoAnalyzer() {
       setShowQuiz(true);
     } catch (error: any) {
       console.error("Quiz generation error:", error);
-      setError(error.message || 'حدث خطأ أثناء إنشاء الاختبار');
+      let errorMessage = "حدث خطأ أثناء إنشاء الاختبار";
+      if (error.message && error.message.includes("429")) {
+        errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+      } else if (error.message) {
+        try {
+          const parsedError = JSON.parse(error.message);
+          if (parsedError.error && parsedError.error.code === 429) {
+            errorMessage = "لقد تجاوزت الحد المسموح به من الطلبات المجانية. يرجى المحاولة بعد قليل.";
+          }
+        } catch (e) {
+          // Ignore parse error
+          errorMessage = error.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setAnalyzing(false);
     }
