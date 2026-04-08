@@ -78,6 +78,13 @@ export default function App() {
   const [isMaintenance, setIsMaintenance] = useState(false);
 
   useEffect(() => {
+    // Initialize dark mode
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
     // Auth Listener
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -128,7 +135,7 @@ export default function App() {
 
           {/* Normal App Routes */}
           <Route path="/*" element={
-            <div className="flex h-[100dvh] bg-gray-50 overflow-hidden">
+            <div className="flex h-[100dvh] bg-gray-50 dark:bg-slate-900 overflow-hidden">
               {/* Desktop Sidebar */}
               {user && (
                 <div className="hidden md:block">

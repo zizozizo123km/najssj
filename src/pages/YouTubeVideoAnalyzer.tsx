@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, Sparkles, BrainCircuit, RotateCcw, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getGeminiClient } from '../lib/gemini';
+import { getGeminiConfig } from '../lib/gemini';
+import { getApiKey } from '../lib/apiKeys';
 import VideoList from '../components/youtube/VideoList';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import VideoSummary from '../components/youtube/VideoSummary';
@@ -32,19 +33,31 @@ export default function YouTubeVideoAnalyzer() {
   const [quiz, setQuiz] = useState<any[]>([]);
   const [showQuiz, setShowQuiz] = useState(false);
   const [rating, setRating] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async (searchQuery?: string) => {
     const activeQuery = searchQuery || query;
     if (!activeQuery.trim() && filter === 'الكل') return;
     
     setLoading(true);
+    setError(null);
     try {
+      const apiKey = await getApiKey('youtube', 'api_key');
+      if (!apiKey) {
+        throw new Error('مفتاح YouTube API غير متوفر. يرجى إضافته من لوحة التحكم.');
+      }
+
       const finalQuery = filter === 'الكل' 
         ? activeQuery + " بكالوريا الجزائر" 
         : `درس ${filter} ${activeQuery} بكالوريا الجزائر`;
         
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(finalQuery)}&key=AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc&type=video&maxResults=5`);
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(finalQuery)}&key=${apiKey}&type=video&maxResults=5`);
       const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message || 'حدث خطأ أثناء البحث في يوتيوب');
+      }
+
       if (data.items) {
         setVideos(data.items.map((item: any) => ({
           id: item.id.videoId,
@@ -55,8 +68,9 @@ export default function YouTubeVideoAnalyzer() {
           description: item.snippet.description
         })));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Search error:", error);
+      setError(error.message || 'حدث خطأ أثناء البحث');
     } finally {
       setLoading(false);
     }
@@ -75,9 +89,10 @@ export default function YouTubeVideoAnalyzer() {
     setQuiz([]);
     setShowQuiz(false);
     setRating(0);
+    setError(null);
 
     try {
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const prompt = `Analyze this YouTube video for a Baccalaureate student in Algeria.
         IMPORTANT: Focus strictly on the academic content of the lesson. Provide a clear, structured, and concise summary of the lesson content itself. Avoid narrative style or mimicking a teacher's speech. Use technical terms and educational content accurate for the Algerian Baccalaureate.
         
@@ -96,7 +111,7 @@ export default function YouTubeVideoAnalyzer() {
         Return as JSON with keys: summary, clarifications, boardExplanation, keyPoints, importantNotes, timestamps.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: model,
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -115,8 +130,9 @@ export default function YouTubeVideoAnalyzer() {
       } catch (e) {
         setAnalysis(JSON.parse(responseText));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Analysis error:", error);
+      setError(error.message || 'حدث خطأ أثناء التحليل');
     } finally {
       setAnalyzing(false);
     }
@@ -125,6 +141,7 @@ export default function YouTubeVideoAnalyzer() {
   const generateQuiz = async () => {
     if (!analysis) return;
     setAnalyzing(true);
+    setError(null);
     try {
       const prompt = `Based on this video analysis:
         Summary: ${analysis.summary}
@@ -140,9 +157,9 @@ export default function YouTubeVideoAnalyzer() {
         
         Return ONLY a JSON array of objects with keys: id, type ('mcq', 'true-false', 'short-answer'), question, options (for mcq), correctAnswer, explanation. Do not include any other text.`;
 
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: model,
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -162,8 +179,9 @@ export default function YouTubeVideoAnalyzer() {
         setQuiz(JSON.parse(responseText));
       }
       setShowQuiz(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Quiz generation error:", error);
+      setError(error.message || 'حدث خطأ أثناء إنشاء الاختبار');
     } finally {
       setAnalyzing(false);
     }
@@ -184,6 +202,12 @@ export default function YouTubeVideoAnalyzer() {
         <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">حول أي فيديو إلى درس متكامل</h1>
         <p className="text-gray-500 max-w-xl mx-auto">ابحث عن أي موضوع دراسي وسيقوم الذكاء الاصطناعي بتحليل الفيديو، تلخيصه، واختبارك فيه.</p>
       </header>
+
+      {error && (
+        <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-center font-bold">
+          {error}
+        </div>
+      )}
 
       {/* Search Bar & Filters */}
       {!selectedVideo && (

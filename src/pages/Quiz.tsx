@@ -13,7 +13,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { Type } from "@google/genai";
-import { getGeminiClient } from '../lib/gemini';
+import { getGeminiConfig } from '../lib/gemini';
 import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_CHAPTERS, BAC_BRANCHES } from '../data/baccalaureate';
 
@@ -68,9 +68,9 @@ export default function Quiz() {
     setLoading(true);
     setSelectedChapter(chapter);
     try {
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: model,
         contents: `Generate 5 multiple choice questions for Baccalaureate level in Algeria for chapter: ${chapter.name} in ${selectedSubject.name}. 
         Return as JSON array of objects with:
         - question (string)
@@ -168,9 +168,9 @@ export default function Quiz() {
       
       Please explain my mistakes simply in Arabic and give me tips to improve.`;
 
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: model,
         contents: prompt,
       });
       setExplanation(response.text || "عذراً، لم أتمكن من توليد الشرح.");

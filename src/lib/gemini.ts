@@ -1,17 +1,37 @@
 import { GoogleGenAI } from "@google/genai";
-import { getApiKey } from "./apiKeys";
+import { db, doc, getDoc } from './firebase';
+
+export async function getGeminiConfig() {
+  try {
+    const docRef = doc(db, 'admin_settings', 'api_keys');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const settings = docSnap.data().settings;
+      if (settings.gemini && Array.isArray(settings.gemini) && settings.gemini.length > 0) {
+        const validKeys = settings.gemini.filter((k: any) => k.api_key && k.api_key.trim() !== '');
+        if (validKeys.length > 0) {
+          const randomIndex = Math.floor(Math.random() * validKeys.length);
+          const selected = validKeys[randomIndex];
+          return {
+            client: new GoogleGenAI({ apiKey: selected.api_key }),
+            model: selected.model_name || 'gemini-2.5-flash'
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching Gemini config:", error);
+  }
+  throw new Error("Gemini API key is missing in Firestore.");
+}
 
 export async function getGeminiClient() {
-  const apiKey = await getApiKey('gemini');
-  if (!apiKey) {
-    throw new Error("Gemini API key is missing in Firestore.");
-  }
-  return new GoogleGenAI({ apiKey });
+  const { client } = await getGeminiConfig();
+  return client;
 }
 
 export async function askAI(prompt: string, context: string = "") {
-  const ai = await getGeminiClient();
-  const model = "gemini-2.5-flash";
+  const { client: ai, model } = await getGeminiConfig();
 
   const systemInstruction = `
     You are an AI assistant for Algerian Baccalaureate students. 

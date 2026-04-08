@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share2, Bookmark, Sparkles, BrainCircuit, Loader2, X, Play, User, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
-import { getGeminiClient } from '../../lib/gemini';
+import { getGeminiConfig } from '../../lib/gemini';
 
 interface ReelCardProps {
   reel: any;
@@ -27,7 +27,7 @@ export default function ReelCard({ reel, isActive }: ReelCardProps) {
     setAnalyzing(true);
     setShowAnalysis(true);
     try {
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const prompt = `Analyze this educational short video for a Baccalaureate student in Algeria.
         IMPORTANT: Use the Algerian Arabic dialect (Darija) for the summary and notes.
         
@@ -42,7 +42,7 @@ export default function ReelCard({ reel, isActive }: ReelCardProps) {
         Return as JSON with keys: summary, keyPoints, importantNotes.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: model,
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -75,9 +75,9 @@ export default function ReelCard({ reel, isActive }: ReelCardProps) {
         
         Return as JSON array of objects with keys: id, type ('mcq', 'true-false'), question, options (for mcq), correctAnswer, explanation.`;
 
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: model,
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });

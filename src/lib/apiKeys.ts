@@ -6,8 +6,14 @@ export async function getApiKey(service: string, field: string = 'api_key') {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const settings = docSnap.data().settings;
-      if (settings[service] && settings[service][0] && settings[service][0][field]) {
-        return settings[service][0][field];
+      if (settings[service] && Array.isArray(settings[service]) && settings[service].length > 0) {
+        // Filter out empty keys
+        const validKeys = settings[service].filter((k: any) => k[field] && k[field].trim() !== '');
+        if (validKeys.length > 0) {
+          // Pick a random key to load balance
+          const randomIndex = Math.floor(Math.random() * validKeys.length);
+          return validKeys[randomIndex][field];
+        }
       }
     }
   } catch (error) {

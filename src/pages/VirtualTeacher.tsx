@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Image as ImageIcon, Sparkles, BookOpen, HelpCircle, Save, Trash2, Loader2, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getGeminiClient } from '../lib/gemini';
+import { getGeminiConfig } from '../lib/gemini';
 import MessageBubble from '../components/teacher/MessageBubble';
 import TeacherAvatar from '../components/teacher/TeacherAvatar';
 import { auth, db, doc, onSnapshot } from '../lib/firebase';
@@ -114,12 +114,12 @@ export default function VirtualTeacher() {
     localStorage.setItem('ai_usage', JSON.stringify({ date: today, count: newCount }));
 
     try {
-      const ai = await getGeminiClient();
+      const { client: ai, model } = await getGeminiConfig();
       const branchName = BAC_BRANCHES.find(b => b.id === userProfile?.branch)?.name || 'علوم تجريبية';
       const studentName = userProfile?.full_name || 'تلميذي العزيز';
 
       const chat = ai.chats.create({
-        model: "gemini-2.5-flash",
+        model: model,
         config: {
           systemInstruction: `أنت "الأستاذ الافتراضي" (Virtual Teacher)، خبير في المناهج التعليمية الجزائرية للبكالوريا. 
           أنت تخاطب الطالب "${studentName}" من شعبة "${branchName}".
@@ -137,7 +137,7 @@ export default function VirtualTeacher() {
       if (userMessage.image) {
         const base64Data = userMessage.image.split(',')[1];
         response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: model,
           contents: [
             {
               parts: [

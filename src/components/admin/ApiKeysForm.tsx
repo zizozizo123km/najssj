@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { db, doc, getDoc, setDoc } from '../../lib/firebase';
+import { Plus, Trash2 } from 'lucide-react';
 
 const API_TYPES = [
   { id: 'youtube', name: 'YouTube API', fields: ['api_key', 'channel_id', 'region', 'notes'] },
@@ -11,15 +12,15 @@ const API_TYPES = [
 
 export default function ApiKeysForm() {
   const [keys, setKeys] = useState<any>({
-    youtube: Array(1).fill({ api_key: '', channel_id: '', region: '', notes: '' }),
-    gemini: Array(1).fill({ api_key: '', model_name: '', region: '', notes: '' }),
-    cloudinary: Array(1).fill({ 
+    youtube: [{ api_key: '', channel_id: '', region: '', notes: '' }],
+    gemini: [{ api_key: '', model_name: '', region: '', notes: '' }],
+    cloudinary: [{ 
       cloudinary_url: 'cloudinary://946433472178741:uWZ5l-dv0mTBIwr0AO6C9Q26xMY@dbmokwazr', 
       upload_preset: 'prest', 
       cloud_name: 'dbmokwazr', 
       notes: '' 
-    }),
-    secondary_db: Array(1).fill({ db_host: '', db_user: '', db_password: '', db_name: '' })
+    }],
+    secondary_db: [{ db_host: '', db_user: '', db_password: '', db_name: '' }]
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,7 +32,15 @@ export default function ApiKeysForm() {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          setKeys(docSnap.data().settings);
+          const data = docSnap.data().settings;
+          // Ensure arrays exist for each type
+          const mergedKeys = { ...keys };
+          Object.keys(data).forEach(key => {
+            if (Array.isArray(data[key]) && data[key].length > 0) {
+              mergedKeys[key] = data[key];
+            }
+          });
+          setKeys(mergedKeys);
         }
       } catch (error) {
         console.error('Error fetching API keys:', error);
@@ -61,10 +70,10 @@ export default function ApiKeysForm() {
     success: null
   });
 
-  const testGemini = async () => {
+  const testGemini = async (index: number) => {
     setTestStatus({ loading: true, message: 'جاري التجربة...', success: null });
     try {
-      const geminiSettings = keys.gemini?.[0];
+      const geminiSettings = keys.gemini?.[index];
       if (!geminiSettings?.api_key) {
         throw new Error('يرجى إدخال مفتاح API أولاً');
       }
@@ -83,14 +92,35 @@ export default function ApiKeysForm() {
     }
   };
 
-
   const handleChange = (api: string, index: number, field: string, value: string) => {
     const newKeys = { ...keys };
-    if (!newKeys[api]) newKeys[api] = Array(1).fill({});
+    if (!newKeys[api]) newKeys[api] = [{}];
     if (!newKeys[api][index]) newKeys[api][index] = {};
     
     newKeys[api][index] = { ...newKeys[api][index], [field]: value };
     setKeys(newKeys);
+  };
+
+  const addKey = (api: string) => {
+    const newKeys = { ...keys };
+    if (!newKeys[api]) newKeys[api] = [];
+    
+    const emptyKey: any = {};
+    const apiDef = API_TYPES.find(a => a.id === api);
+    if (apiDef) {
+      apiDef.fields.forEach(f => emptyKey[f] = '');
+    }
+    
+    newKeys[api].push(emptyKey);
+    setKeys(newKeys);
+  };
+
+  const removeKey = (api: string, index: number) => {
+    const newKeys = { ...keys };
+    if (newKeys[api] && newKeys[api].length > 1) {
+      newKeys[api].splice(index, 1);
+      setKeys(newKeys);
+    }
   };
 
   const GEMINI_MODELS = [
@@ -118,46 +148,74 @@ export default function ApiKeysForm() {
       <div className="space-y-8">
         {API_TYPES.map(api => (
           <div key={api.id} className="bg-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <h3 className="text-lg font-bold text-white mb-4">{api.name}</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">{api.name}</h3>
+              <button 
+                onClick={() => addKey(api.id)}
+                className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-blue-400 px-3 py-1.5 rounded-lg border border-gray-600 transition-colors"
+              >
+                <Plus size={16} />
+                <span>إضافة حقل جديد</span>
+              </button>
+            </div>
             
-            {api.id === 'gemini' && (
-              <div className="mb-4 p-4 bg-gray-800 rounded-xl space-y-3">
-                <label className="text-xs font-bold text-gray-400">اختر النموذج</label>
-                <select
-                  value={keys.gemini?.[0]?.model_name || 'gemini-1.5-flash'}
-                  onChange={(e) => handleChange('gemini', 0, 'model_name', e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
-                >
-                  {GEMINI_MODELS.map(model => (
-                    <option key={model} value={model}>{model}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={testGemini}
-                  disabled={testStatus.loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold transition-colors disabled:opacity-50"
-                >
-                  {testStatus.loading ? 'جاري التجربة...' : 'تجربة الاتصال'}
-                </button>
-                {testStatus.message && (
-                  <p className={`text-xs font-bold text-center ${testStatus.success ? 'text-green-400' : 'text-red-400'}`}>
-                    {testStatus.message}
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="space-y-6">
+              {(keys[api.id] || [{}]).map((keyItem: any, index: number) => (
+                <div key={index} className="p-4 bg-gray-800/50 rounded-xl border border-gray-700 relative">
+                  {keys[api.id].length > 1 && (
+                    <button 
+                      onClick={() => removeKey(api.id, index)}
+                      className="absolute top-4 left-4 text-red-400 hover:text-red-300 bg-red-400/10 p-1.5 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                  
+                  <div className="mb-4 text-sm font-bold text-gray-400">
+                    المفتاح #{index + 1}
+                  </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              {api.fields.map(field => (
-                <div key={field} className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 capitalize">{field.replace('_', ' ')}</label>
-                  <input
-                    type={field.includes('password') ? 'password' : 'text'}
-                    value={keys[api.id]?.[0]?.[field] || ''}
-                    onChange={(e) => handleChange(api.id, 0, field, e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
-                    dir="ltr"
-                  />
+                  {api.id === 'gemini' && (
+                    <div className="mb-4 p-4 bg-gray-800 rounded-xl space-y-3 border border-gray-600">
+                      <label className="text-xs font-bold text-gray-400">اختر النموذج</label>
+                      <select
+                        value={keyItem.model_name || 'gemini-1.5-flash'}
+                        onChange={(e) => handleChange('gemini', index, 'model_name', e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
+                      >
+                        {GEMINI_MODELS.map(model => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => testGemini(index)}
+                        disabled={testStatus.loading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold transition-colors disabled:opacity-50"
+                      >
+                        {testStatus.loading ? 'جاري التجربة...' : 'تجربة الاتصال'}
+                      </button>
+                      {testStatus.message && (
+                        <p className={`text-xs font-bold text-center ${testStatus.success ? 'text-green-400' : 'text-red-400'}`}>
+                          {testStatus.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {api.fields.map(field => (
+                      <div key={field} className="space-y-1">
+                        <label className="text-xs font-bold text-gray-400 capitalize">{field.replace('_', ' ')}</label>
+                        <input
+                          type={field.includes('password') ? 'password' : 'text'}
+                          value={keyItem[field] || ''}
+                          onChange={(e) => handleChange(api.id, index, field, e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
+                          dir="ltr"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
