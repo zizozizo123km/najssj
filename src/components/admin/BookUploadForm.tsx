@@ -76,9 +76,9 @@ export default function BookUploadForm() {
         setCoverPreview(null);
       }, 3000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading book:', error);
-      alert('حدث خطأ أثناء رفع الكتاب. يرجى المحاولة مرة أخرى.');
+      alert(`حدث خطأ أثناء رفع الكتاب: ${error.message || 'خطأ غير معروف'}`);
     } finally {
       setLoading(false);
     }

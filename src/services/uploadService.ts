@@ -26,6 +26,7 @@ export const uploadFile = async (file: File | string, type: 'image' | 'video' | 
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', uploadPreset);
+  formData.append('resource_type', 'auto');
 
   let response;
   try {
