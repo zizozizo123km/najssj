@@ -1,4 +1,4 @@
-export const uploadFile = async (file: File | string, type: 'image' | 'video' = 'image') => {
+export const uploadFile = async (file: File | string, type: 'image' | 'video' | 'raw' = 'image') => {
   // Hardcoding the values to ensure old settings don't override them
   const cloudName = 'dbmokwazr';
   const uploadPreset = 'neverm';
@@ -7,23 +7,25 @@ export const uploadFile = async (file: File | string, type: 'image' | 'video' = 
     throw new Error('Cloudinary configuration is missing. Please set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in the settings.');
   }
 
-  let isVideo = type === 'video';
+  let resourceType = 'image';
   
   if (file instanceof File) {
-    isVideo = file.type.startsWith('video/');
-    if (isVideo && file.size > 50 * 1024 * 1024) {
-      throw new Error('Video file size exceeds 50MB limit.');
+    if (file.type.startsWith('video/')) {
+      resourceType = 'video';
+      if (file.size > 50 * 1024 * 1024) {
+        throw new Error('Video file size exceeds 50MB limit.');
+      }
+    } else if (file.type === 'application/pdf') {
+      resourceType = 'raw'; // PDF is often treated as raw in Cloudinary for some presets, or 'image' for others. 'auto' is safest.
     }
   }
 
-  const url = `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`;
+  // Using 'auto' allows Cloudinary to detect the type automatically
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
 
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', uploadPreset);
-  if (isVideo) {
-    formData.append('resource_type', 'video');
-  }
 
   let response;
   try {

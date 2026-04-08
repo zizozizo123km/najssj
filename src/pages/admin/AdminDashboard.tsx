@@ -7,6 +7,8 @@ import StudentTable from '../../components/admin/StudentTable';
 import NotificationForm from '../../components/admin/NotificationForm';
 import ApiKeysForm from '../../components/admin/ApiKeysForm';
 import MaintenanceToggle from '../../components/admin/MaintenanceToggle';
+import BookUploadForm from '../../components/admin/BookUploadForm';
+import { BookOpen } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -90,6 +92,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'students', label: 'الطلاب', icon: Users },
+    { id: 'books', label: 'المكتبة', icon: BookOpen },
     { id: 'notifications', label: 'الإشعارات', icon: Bell },
     { id: 'settings', label: 'الإعدادات', icon: Settings },
   ];
@@ -156,6 +159,12 @@ export default function AdminDashboard() {
         {activeTab === 'students' && (
           <div className="space-y-6">
             <StudentTable />
+          </div>
+        )}
+
+        {activeTab === 'books' && (
+          <div className="space-y-6">
+            <BookUploadForm />
           </div>
         )}
 
