@@ -10,7 +10,7 @@ export default function VideoPlayer({ videoId, title }: VideoPlayerProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100"
+      className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-800"
     >
       <div className="aspect-video bg-black">
         <iframe
@@ -21,8 +21,8 @@ export default function VideoPlayer({ videoId, title }: VideoPlayerProps) {
           allowFullScreen
         ></iframe>
       </div>
-      <div className="p-4 bg-white">
-        <h2 className="text-xl font-bold text-gray-900 leading-tight">{title}</h2>
+      <div className="p-4 bg-white dark:bg-gray-900">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{title}</h2>
       </div>
     </motion.div>
   );

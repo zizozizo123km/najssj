@@ -79,7 +79,7 @@ export default function App() {
 
   useEffect(() => {
     // Initialize dark mode
-    if (localStorage.getItem('theme') === 'dark') {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
@@ -135,7 +135,7 @@ export default function App() {
 
           {/* Normal App Routes */}
           <Route path="/*" element={
-            <div className="flex h-[100dvh] bg-gray-50 dark:bg-slate-900 overflow-hidden">
+            <div className="flex h-[100dvh] bg-gray-50 dark:bg-gray-950 overflow-hidden transition-colors">
               {/* Desktop Sidebar */}
               {user && (
                 <div className="hidden md:block">

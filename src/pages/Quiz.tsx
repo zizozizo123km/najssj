@@ -72,7 +72,7 @@ export default function Quiz() {
       const response = await ai.models.generateContent({
         model: model,
         contents: `Generate 5 multiple choice questions for Baccalaureate level in Algeria for chapter: ${chapter.name} in ${selectedSubject.name}. 
-        Return as JSON array of objects with:
+        Return ONLY a JSON array of objects with:
         - question (string)
         - options (array of 4 strings)
         - correctAnswer (string)
@@ -80,28 +80,29 @@ export default function Quiz() {
         `,
         config: {
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { type: Type.STRING },
-                options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                correctAnswer: { type: Type.STRING },
-                explanation: { type: Type.STRING },
-              },
-              required: ["question", "options", "correctAnswer", "explanation"],
-            },
-          },
         },
       });
-      const data = JSON.parse(response.text || "[]");
+      
+      const responseText = response.text || "[]";
+      let cleanJson = responseText;
+      const firstBracket = responseText.indexOf('[');
+      const lastBracket = responseText.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket !== -1) {
+        cleanJson = responseText.substring(firstBracket, lastBracket + 1);
+      }
+      
+      const data = JSON.parse(cleanJson);
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("لم يتم توليد أسئلة صالحة.");
+      }
+      
       setQuestions(data);
       setCurrentQuestionIndex(0);
       setUserAnswers({});
       setView('quiz');
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error("Quiz generation error:", error);
+      alert("حدث خطأ أثناء توليد الاختبار: " + (error.message || "حاول مرة أخرى"));
     } finally {
       setLoading(false);
     }

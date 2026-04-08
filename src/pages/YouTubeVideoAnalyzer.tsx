@@ -192,19 +192,19 @@ export default function YouTubeVideoAnalyzer() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 font-sans space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 font-sans space-y-8 transition-colors">
       {/* Header */}
       <header className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-full text-sm font-bold border border-red-100">
+        <div className="inline-flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-full text-sm font-bold border border-red-100 dark:border-red-900/50">
           <Sparkles size={18} />
           <span>محلل فيديوهات يوتيوب الذكي</span>
         </div>
-        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">حول أي فيديو إلى درس متكامل</h1>
-        <p className="text-gray-500 max-w-xl mx-auto">ابحث عن أي موضوع دراسي وسيقوم الذكاء الاصطناعي بتحليل الفيديو، تلخيصه، واختبارك فيه.</p>
+        <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">حول أي فيديو إلى درس متكامل</h1>
+        <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">ابحث عن أي موضوع دراسي وسيقوم الذكاء الاصطناعي بتحليل الفيديو، تلخيصه، واختبارك فيه.</p>
       </header>
 
       {error && (
-        <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-center font-bold">
+        <div className="max-w-2xl mx-auto bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-center font-bold">
           {error}
         </div>
       )}
@@ -214,7 +214,7 @@ export default function YouTubeVideoAnalyzer() {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="relative group max-w-2xl mx-auto">
             <div className="absolute inset-0 bg-red-500/10 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
-            <div className="relative flex items-center bg-white p-2 rounded-2xl shadow-xl border border-gray-100">
+            <div className="relative flex items-center bg-white dark:bg-gray-900 p-2 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800">
               <Search className="absolute left-6 text-gray-400" size={24} />
               <input
                 type="text"
@@ -222,7 +222,7 @@ export default function YouTubeVideoAnalyzer() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="ابحث عن درس (مثلاً: المتتاليات الحسابية)..."
-                className="w-full pl-14 pr-6 py-4 bg-transparent outline-none text-gray-800 font-medium"
+                className="w-full pl-14 pr-6 py-4 bg-transparent outline-none text-gray-800 dark:text-white font-medium"
               />
               <button
                 onClick={() => handleSearch()}
@@ -243,7 +243,7 @@ export default function YouTubeVideoAnalyzer() {
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
                   filter === s 
                     ? 'bg-red-600 text-white border-red-500 shadow-md' 
-                    : 'bg-white text-gray-600 border-gray-100 hover:border-red-200'
+                    : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-gray-800 hover:border-red-200 dark:hover:border-red-500/50'
                 }`}
               >
                 {s}
@@ -266,10 +266,10 @@ export default function YouTubeVideoAnalyzer() {
               <VideoList videos={videos} onSelect={handleAnalyze} />
             ) : !loading && (
               <div className="text-center py-20 space-y-4">
-                <div className="w-20 h-20 bg-gray-100 text-gray-300 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 rounded-full flex items-center justify-center mx-auto">
                   <Search size={40} />
                 </div>
-                <p className="text-gray-400 font-medium">ابدأ بالبحث عن موضوع دراسي لتظهر النتائج هنا</p>
+                <p className="text-gray-400 dark:text-gray-500 font-medium">ابدأ بالبحث عن موضوع دراسي لتظهر النتائج هنا</p>
               </div>
             )}
           </motion.div>
@@ -284,7 +284,7 @@ export default function YouTubeVideoAnalyzer() {
             {/* Back Button */}
             <button
               onClick={() => setSelectedVideo(null)}
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-bold transition-colors"
+              className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-bold transition-colors"
             >
               <ChevronLeft size={20} />
               <span>العودة للنتائج</span>
@@ -296,9 +296,9 @@ export default function YouTubeVideoAnalyzer() {
                 <VideoPlayer videoId={selectedVideo.id} title={selectedVideo.title} />
                 
                 {analyzing && !analysis && (
-                  <div className="bg-white rounded-2xl p-12 shadow-lg border border-gray-100 text-center space-y-4">
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl p-12 shadow-lg border border-gray-100 dark:border-gray-800 text-center space-y-4">
                     <Loader2 className="animate-spin text-red-600 mx-auto" size={48} />
-                    <p className="text-gray-500 font-bold animate-pulse">جاري تحليل محتوى الفيديو بذكاء...</p>
+                    <p className="text-gray-500 dark:text-gray-400 font-bold animate-pulse">جاري تحليل محتوى الفيديو بذكاء...</p>
                   </div>
                 )}
 
@@ -318,14 +318,14 @@ export default function YouTubeVideoAnalyzer() {
 
               {/* Right Column: Actions & Sidebar */}
               <div className="lg:col-span-4 space-y-6">
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-6 sticky top-8">
-                  <h3 className="font-bold text-gray-900 border-b pb-3">إجراءات سريعة</h3>
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-800 space-y-6 sticky top-8">
+                  <h3 className="font-bold text-gray-900 dark:text-white border-b dark:border-gray-800 pb-3">إجراءات سريعة</h3>
                   
                   {!showQuiz ? (
                     <button
                       onClick={generateQuiz}
                       disabled={analyzing || !analysis}
-                      className="w-full flex items-center justify-center gap-3 bg-gray-900 text-white p-4 rounded-xl font-bold hover:bg-black disabled:opacity-50 transition-all shadow-lg active:scale-95 group"
+                      className="w-full flex items-center justify-center gap-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-4 rounded-xl font-bold hover:bg-black dark:hover:bg-gray-100 disabled:opacity-50 transition-all shadow-lg active:scale-95 group"
                     >
                       <BrainCircuit size={24} className="group-hover:rotate-12 transition-transform" />
                       <span>اختبر معلوماتي (Test Me)</span>
@@ -333,7 +333,7 @@ export default function YouTubeVideoAnalyzer() {
                   ) : (
                     <button
                       onClick={() => setShowQuiz(false)}
-                      className="w-full flex items-center justify-center gap-3 bg-gray-100 text-gray-700 p-4 rounded-xl font-bold hover:bg-gray-200 transition-all active:scale-95"
+                      className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-4 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
                     >
                       <RotateCcw size={20} />
                       <span>العودة للتحليل</span>
@@ -350,7 +350,7 @@ export default function YouTubeVideoAnalyzer() {
                           className="flex gap-3 cursor-pointer group"
                         >
                           <img src={v.thumbnail} className="w-20 h-12 object-cover rounded-lg shadow-sm group-hover:ring-2 ring-red-500 transition-all" referrerPolicy="no-referrer" />
-                          <p className="text-xs font-bold text-gray-700 line-clamp-2 group-hover:text-red-600 transition-colors">{v.title}</p>
+                          <p className="text-xs font-bold text-gray-700 dark:text-gray-300 line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{v.title}</p>
                         </div>
                       ))}
                     </div>

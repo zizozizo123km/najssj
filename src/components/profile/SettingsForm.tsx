@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, Mail, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles, Key, Moon, Sun } from 'lucide-react';
+import { User, Mail, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles } from 'lucide-react';
 import AvatarGallery from './AvatarGallery';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../../data/baccalaureate';
 
@@ -28,44 +28,6 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     notifications: true,
   });
 
-  const [apiKeys, setApiKeys] = useState({
-    gemini: '',
-    youtube: '',
-    cloudinary: ''
-  });
-
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    // Load custom API keys from local storage
-    const localKeys = localStorage.getItem('custom_api_keys');
-    if (localKeys) {
-      try {
-        const parsed = JSON.parse(localKeys);
-        setApiKeys({
-          gemini: parsed.gemini || '',
-          youtube: parsed.youtube || '',
-          cloudinary: parsed.cloudinary || ''
-        });
-      } catch (e) {}
-    }
-
-    // Check dark mode
-    setIsDarkMode(document.documentElement.classList.contains('dark'));
-  }, []);
-
-  const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
-
   const toggleSubject = (subject: string) => {
     setFormData(prev => ({
       ...prev,
@@ -75,50 +37,22 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Save API keys to local storage
-    localStorage.setItem('custom_api_keys', JSON.stringify(apiKeys));
-    onSave(formData);
-  };
-
   const currentSubjects = BAC_SUBJECTS[formData.branch] || [];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-gray-100 dark:border-slate-700 space-y-8"
+      className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-xl border border-gray-100 dark:border-gray-800 space-y-8 transition-colors"
     >
-      <div className="flex items-center justify-between border-b dark:border-slate-700 pb-4">
+      <div className="flex items-center justify-between border-b dark:border-gray-800 pb-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">تعديل الملف الشخصي</h2>
-        <button onClick={onCancel} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors text-gray-500 dark:text-gray-400">
+        <button onClick={onCancel} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full transition-colors">
           <X size={20} />
         </button>
       </div>
 
-      <form className="space-y-6" onSubmit={handleSave}>
-        {/* Appearance Settings */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-100 dark:border-slate-600">
-          <div className="flex items-center gap-3">
-            {isDarkMode ? <Moon size={20} className="text-indigo-400" /> : <Sun size={20} className="text-orange-500" />}
-            <div>
-              <p className="text-sm font-bold text-gray-800 dark:text-white">الوضع المظلم</p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">تغيير مظهر التطبيق</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className={`w-12 h-6 rounded-full transition-colors relative ${isDarkMode ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}
-          >
-            <motion.div 
-              animate={{ x: isDarkMode ? 24 : 4 }}
-              className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-            />
-          </button>
-        </div>
-
+      <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
         {/* Avatar Selection */}
         <div className="space-y-4">
           <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
@@ -140,7 +74,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
               type="text" 
               value={formData.displayName}
               onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all"
+              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all"
             />
           </div>
           <div className="space-y-2">
@@ -151,7 +85,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
               type="email" 
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all"
+              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all"
             />
           </div>
         </div>
@@ -164,7 +98,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           <select 
             value={formData.branch}
             onChange={(e) => setFormData({ ...formData, branch: e.target.value, favoriteSubjects: [] })}
-            className="w-full p-3 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 outline-none transition-all"
+            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all"
           >
             {BAC_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
           </select>
@@ -184,7 +118,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
                   formData.favoriteSubjects.includes(s.name)
                     ? 'bg-blue-600 text-white border-blue-500 shadow-md'
-                    : 'bg-white dark:bg-slate-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-600 hover:border-blue-200 dark:hover:border-blue-500'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-500/50'
                 }`}
               >
                 {s.name}
@@ -193,63 +127,19 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           </div>
         </div>
 
-        {/* Custom API Keys */}
-        <div className="space-y-4 pt-4 border-t dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-2">
-            <Key size={18} className="text-indigo-500" />
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">مفاتيح API الخاصة (اختياري)</h3>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            إذا كنت تواجه مشاكل في التحليل أو البحث، يمكنك إضافة مفاتيحك الخاصة هنا. سيتم حفظها في متصفحك فقط.
-          </p>
-          
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1 block">Gemini API Key</label>
-              <input 
-                type="password" 
-                value={apiKeys.gemini}
-                onChange={(e) => setApiKeys({ ...apiKeys, gemini: e.target.value })}
-                placeholder="AIzaSy..."
-                className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1 block">YouTube API Key</label>
-              <input 
-                type="password" 
-                value={apiKeys.youtube}
-                onChange={(e) => setApiKeys({ ...apiKeys, youtube: e.target.value })}
-                placeholder="AIzaSy..."
-                className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-1 block">Cloudinary API Key</label>
-              <input 
-                type="password" 
-                value={apiKeys.cloudinary}
-                onChange={(e) => setApiKeys({ ...apiKeys, cloudinary: e.target.value })}
-                placeholder="Cloudinary Key..."
-                className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white text-sm outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Notifications */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-100 dark:border-slate-600">
+        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <Bell size={20} className="text-blue-500" />
             <div>
-              <p className="text-sm font-bold text-gray-800 dark:text-white">تلقي التنبيهات</p>
+              <p className="text-sm font-bold text-gray-800 dark:text-gray-200">تلقي التنبيهات</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400">تنبيهات حول الدروس الجديدة والاختبارات</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setFormData({ ...formData, notifications: !formData.notifications })}
-            className={`w-12 h-6 rounded-full transition-colors relative ${formData.notifications ? 'bg-blue-600' : 'bg-gray-300 dark:bg-slate-600'}`}
+            className={`w-12 h-6 rounded-full transition-colors relative ${formData.notifications ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}
           >
             <motion.div 
               animate={{ x: formData.notifications ? 24 : 4 }}
@@ -270,7 +160,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 p-4 rounded-2xl font-bold hover:bg-gray-200 dark:hover:bg-slate-600 transition-all active:scale-95"
+            className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 p-4 rounded-2xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
           >
             إلغاء
           </button>

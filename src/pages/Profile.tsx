@@ -13,6 +13,8 @@ import {
   Target,
   Settings as SettingsIcon,
   Calendar,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
 import ProfileHeader from '../components/profile/ProfileHeader';
@@ -44,6 +46,19 @@ export default function Profile() {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [studyPlan, setStudyPlan] = useState<any>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
+
+  const toggleDarkMode = () => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+      setIsDarkMode(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+      setIsDarkMode(true);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -202,17 +217,23 @@ export default function Profile() {
             className="space-y-8"
           >
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-black text-gray-900">الملف الشخصي</h1>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white">الملف الشخصي</h1>
               <div className="flex items-center gap-3">
                 <button 
+                  onClick={toggleDarkMode}
+                  className="p-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+                >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+                <button 
                   onClick={() => setIsEditing(true)}
-                  className="p-2 bg-white text-gray-600 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-all"
+                  className="p-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
                 >
                   <SettingsIcon size={20} />
                 </button>
                 <button 
                   onClick={handleLogout}
-                  className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-100 transition-all"
+                  className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
                 >
                   <LogOut size={18} />
                   <span>خروج</span>
@@ -236,17 +257,17 @@ export default function Profile() {
                 <ActivityList activities={user.activities} />
                 
                 {Array.isArray(studyPlan) && (
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-4">
-                    <h3 className="font-bold text-gray-900 flex items-center gap-2 border-b pb-3">
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-800 space-y-4 transition-colors">
+                    <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b dark:border-gray-800 pb-3">
                       <Calendar size={20} className="text-blue-500" />
                       My Study Plan
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {studyPlan.map((day: any, i: number) => (
-                        <div key={i} className="bg-gray-50 p-4 rounded-xl space-y-2">
-                          <h4 className="font-bold text-gray-900">{day.day}</h4>
+                        <div key={i} className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl space-y-2 border border-transparent dark:border-gray-700">
+                          <h4 className="font-bold text-gray-900 dark:text-white">{day.day}</h4>
                           {Array.isArray(day.slots) && day.slots.map((slot: any, j: number) => (
-                            <p key={j} className="text-xs text-gray-600">{slot.time}: {slot.subject}</p>
+                            <p key={j} className="text-xs text-gray-600 dark:text-gray-400">{slot.time}: {slot.subject}</p>
                           ))}
                         </div>
                       ))}
@@ -256,32 +277,32 @@ export default function Profile() {
               </div>
 
               <div className="lg:col-span-4 space-y-6">
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 space-y-4">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2 border-b pb-3">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-800 space-y-4 transition-colors">
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b dark:border-gray-800 pb-3">
                     <Award size={20} className="text-yellow-500" />
                     أوسمة الإنجاز
                   </h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="flex flex-col items-center gap-2 group">
-                      <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 shadow-inner group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-inner group-hover:scale-110 transition-transform">
                         <Zap size={24} />
                       </div>
-                      <span className="text-[10px] font-bold text-gray-500">سريع التعلم</span>
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">سريع التعلم</span>
                     </div>
                     <div className="flex flex-col items-center gap-2 group">
-                      <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-orange-600 shadow-inner group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-inner group-hover:scale-110 transition-transform">
                         <Target size={24} />
                       </div>
-                      <span className="text-[10px] font-bold text-gray-500">قناص الأهداف</span>
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">قناص الأهداف</span>
                     </div>
                     <div className="flex flex-col items-center gap-2 group opacity-40 grayscale">
-                      <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600 shadow-inner group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 shadow-inner group-hover:scale-110 transition-transform">
                         <ShieldCheck size={24} />
                       </div>
-                      <span className="text-[10px] font-bold text-gray-500">خبير المواد</span>
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">خبير المواد</span>
                     </div>
                   </div>
-                  <button className="w-full text-xs text-blue-600 font-bold hover:underline pt-2">عرض كل الأوسمة</button>
+                  <button className="w-full text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline pt-2">عرض كل الأوسمة</button>
                 </div>
 
                 <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 shadow-xl text-white space-y-4 relative overflow-hidden">

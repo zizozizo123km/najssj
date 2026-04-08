@@ -109,7 +109,7 @@ export default function Dashboard() {
   if (loading) return <Loader />;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-24 font-sans">
+    <div className="max-w-2xl mx-auto space-y-6 pb-24 font-sans transition-colors">
       {/* Welcome & Stats */}
       <div className="px-2 pt-4">
         <motion.div 
@@ -229,20 +229,20 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-3xl p-6 z-[80] shadow-2xl"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white dark:bg-gray-900 rounded-3xl p-6 z-[80] shadow-2xl border border-transparent dark:border-gray-800"
             >
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-2">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mb-2">
                   <AlertTriangle size={32} />
                 </div>
-                <h3 className="text-xl font-black text-gray-900">حذف المنشور</h3>
-                <p className="text-sm text-gray-500 font-medium pb-4">
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">حذف المنشور</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium pb-4">
                   هل أنت متأكد أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.
                 </p>
                 <div className="flex gap-3 w-full">
                   <button
                     onClick={() => setPostToDelete(null)}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                   >
                     إلغاء
                   </button>
@@ -269,7 +269,7 @@ function FilterButton({ active, onClick, icon: Icon, label }: any) {
       className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap shadow-sm border ${
         active 
           ? 'bg-blue-600 text-white border-blue-500 scale-105' 
-          : 'bg-white text-gray-600 border-gray-100 hover:border-blue-200'
+          : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-500/50'
       }`}
     >
       <Icon size={16} />

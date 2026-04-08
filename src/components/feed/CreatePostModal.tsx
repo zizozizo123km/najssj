@@ -133,13 +133,13 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bg-white rounded-t-3xl md:rounded-3xl p-6 pb-8 z-[60] md:w-full md:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar"
+            className="fixed bottom-0 left-0 right-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bg-white dark:bg-gray-900 rounded-t-3xl md:rounded-3xl p-6 pb-8 z-[60] md:w-full md:max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar border border-transparent dark:border-gray-800"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black text-gray-800">{editPost ? 'تعديل المنشور' : 'إنشاء منشور جديد'}</h2>
+              <h2 className="text-xl font-black text-gray-800 dark:text-white">{editPost ? 'تعديل المنشور' : 'إنشاء منشور جديد'}</h2>
               <button 
                 onClick={onClose}
-                className="p-2 bg-gray-100 text-gray-500 rounded-full hover:bg-gray-200 transition-colors"
+                className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -151,7 +151,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                 <button
                   type="button"
                   onClick={() => setShowSubjects(!showSubjects)}
-                  className="w-full flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700"
+                  className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-300"
                 >
                   <span>{subject || 'اختر المادة (اختياري)'}</span>
                   <ChevronDown size={16} className={`transition-transform ${showSubjects ? 'rotate-180' : ''}`} />
@@ -163,7 +163,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg z-10 p-2 grid grid-cols-2 gap-2"
+                      className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-lg z-10 p-2 grid grid-cols-2 gap-2"
                     >
                       {SUBJECTS.map(s => (
                         <button
@@ -174,7 +174,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                             setShowSubjects(false);
                           }}
                           className={`p-2 text-sm font-bold rounded-lg transition-colors ${
-                            subject === s ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-600'
+                            subject === s ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
                           }`}
                         >
                           {s}
@@ -191,19 +191,19 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="بم تفكر؟ شارك أفكارك، أسئلتك، أو نصائحك مع زملائك..."
-                  className="w-full h-32 p-4 bg-gray-50 border border-gray-200 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm font-medium"
+                  className="w-full h-32 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/50 focus:border-transparent transition-all text-sm font-medium"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="absolute bottom-4 right-4 p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                  className="absolute bottom-4 right-4 p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
                   <Smile size={20} />
                 </button>
                 {showEmojiPicker && (
                   <div className="absolute bottom-16 right-0 z-50">
-                    <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} />
+                    <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'} />
                   </div>
                 )}
               </div>
@@ -221,7 +221,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     placeholder="ضع رابط الفيديو هنا (مثال: https://.../video.mp4)"
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm font-medium text-left dir-ltr"
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/50 focus:border-transparent transition-all text-sm font-medium text-left dir-ltr"
                   />
                 </motion.div>
               )}
@@ -248,7 +248,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
               )}
 
               {/* Actions */}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2">
                   <input 
                     type="file"
@@ -264,7 +264,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                       setShowUrlInput(false);
                       setVideoUrl('');
                     }}
-                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"
                     title="إضافة صورة أو فيديو من الجهاز"
                   >
                     <ImageIcon size={20} />
@@ -276,7 +276,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                       setMedia(null);
                       setMediaPreview(null);
                     }}
-                    className={`p-2 rounded-xl transition-colors ${showUrlInput ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                    className={`p-2 rounded-xl transition-colors ${showUrlInput ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
                     title="إضافة رابط فيديو"
                   >
                     <Video size={20} />

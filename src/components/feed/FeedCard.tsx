@@ -120,7 +120,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
-      className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/50 hover:shadow-md transition-all active:scale-[0.98] group relative overflow-visible"
+      className="bg-white dark:bg-gray-900 rounded-3xl p-5 shadow-sm border border-gray-100/50 dark:border-gray-800 hover:shadow-md transition-all active:scale-[0.98] group relative overflow-visible"
     >
       {/* Type Badge */}
       <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider z-10 flex items-center gap-1.5 shadow-sm ${
@@ -137,7 +137,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
       {/* Author Info & Menu */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-gray-50 overflow-hidden shadow-sm">
+          <div className="w-10 h-10 rounded-full border-2 border-gray-50 dark:border-gray-800 overflow-hidden shadow-sm">
             <img 
               src={item.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.authorName}`} 
               alt={item.authorName}
@@ -146,8 +146,8 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
             />
           </div>
           <div>
-            <h4 className="text-sm font-black text-gray-900">{item.authorName}</h4>
-            <p className="text-[10px] font-bold text-gray-400">{item.date}</p>
+            <h4 className="text-sm font-black text-gray-900 dark:text-white">{item.authorName}</h4>
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{item.date}</p>
           </div>
         </div>
 
@@ -156,7 +156,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
           <div className="relative">
             <button 
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors"
             >
               <MoreVertical size={18} />
             </button>
@@ -172,12 +172,12 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                     initial={{ opacity: 0, scale: 0.95, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                    className="absolute left-0 top-full mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20"
+                    className="absolute left-0 top-full mt-1 w-36 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 py-2 z-20"
                   >
                     {onEdit && (
                       <button 
                         onClick={() => { setShowMenu(false); onEdit(item.id); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                       >
                         <Edit2 size={14} />
                         <span className="font-bold">تعديل</span>
@@ -186,7 +186,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                     {onDelete && (
                       <button 
                         onClick={() => { setShowMenu(false); onDelete(item.id); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
                         <Trash2 size={14} />
                         <span className="font-bold">حذف</span>
@@ -202,13 +202,13 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
 
       {/* Content */}
       <div onClick={onClick} className="cursor-pointer space-y-3">
-        <h3 className="text-lg font-black text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">
+        <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
           {item.title}
         </h3>
         
         {item.thumbnail && (
           <div 
-            className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 shadow-inner group-hover:shadow-lg transition-all"
+            className="relative aspect-video rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-inner group-hover:shadow-lg transition-all"
             onClick={(e) => {
               if (item.type === 'video') {
                 e.stopPropagation(); // Prevent card click when interacting with video
@@ -234,14 +234,14 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
           </div>
         )}
 
-        <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 font-medium">
+        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 font-medium">
           {item.content}
         </p>
 
         {item.tags && (
           <div className="flex flex-wrap gap-2 mt-2">
             {item.tags.map(tag => (
-              <span key={tag} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+              <span key={tag} className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md">
                 #{tag}
               </span>
             ))}
@@ -268,7 +268,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden mt-4 pt-4 border-t border-gray-50"
+            className="overflow-hidden mt-4 pt-4 border-t border-gray-50 dark:border-gray-800"
           >
             <div className="space-y-4 mb-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
               {comments.length === 0 ? (
@@ -279,12 +279,12 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                     <img 
                       src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorName}`} 
                       alt={comment.authorName}
-                      className="w-8 h-8 rounded-full bg-gray-100 object-cover"
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="flex-1 bg-gray-50 rounded-2xl p-3 rounded-tr-none">
-                      <h5 className="text-xs font-black text-gray-900 mb-1">{comment.authorName}</h5>
-                      <p className="text-sm text-gray-700 font-medium">{comment.content}</p>
+                    <div className="flex-1 bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-3 rounded-tr-none border border-transparent dark:border-gray-800">
+                      <h5 className="text-xs font-black text-gray-900 dark:text-white mb-1">{comment.authorName}</h5>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">{comment.content}</p>
                     </div>
                   </div>
                 ))
@@ -297,18 +297,18 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="اكتب تعليقاً..."
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500/50 transition-all font-medium"
               />
               <button 
                 type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 <Smile size={20} />
               </button>
               {showEmojiPicker && (
                 <div className="absolute bottom-12 right-0 z-50">
-                  <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} />
+                  <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'} />
                 </div>
               )}
               <button 
