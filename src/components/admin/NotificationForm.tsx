@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Send, Loader2, BellRing } from 'lucide-react';
-import { auth, db, collection, addDoc, serverTimestamp } from '../../lib/firebase';
+import { auth, db, collection, addDoc, serverTimestamp, doc, setDoc, Timestamp } from '../../lib/firebase';
 
 export default function NotificationForm() {
   const [title, setTitle] = useState('');
@@ -18,16 +18,27 @@ export default function NotificationForm() {
         alert(`🔔 إشعار تجريبي:\n\nالعنوان: ${title}\nالرسالة: ${message}`);
       } else {
         const user = auth.currentUser;
+        
+        // 1. Add to permanent notifications history
         await addDoc(collection(db, 'notifications'), {
           title,
           message,
           sent_by: user?.email || 'Admin',
           created_at: serverTimestamp()
         });
+
+        // 2. Set as active broadcast notification for 2 minutes
+        const expiresAt = Timestamp.fromMillis(Date.now() + 120000); // 2 minutes from now
+        await setDoc(doc(db, 'admin_settings', 'broadcast_notification'), {
+          title,
+          message,
+          expiresAt,
+          sentAt: serverTimestamp()
+        });
         
         setTitle('');
         setMessage('');
-        alert('تم إرسال الإشعار بنجاح للجميع!');
+        alert('تم إرسال الإشعار بنجاح! سيظهر للطلاب لمدة دقيقتين.');
       }
     } catch (error) {
       console.error('Error sending notification:', error);

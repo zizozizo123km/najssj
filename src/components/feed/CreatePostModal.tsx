@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Image as ImageIcon, Send, Video, Loader2, ChevronDown, Smile } from 'lucide-react';
 import { auth, db, doc, setDoc, addDoc, collection, serverTimestamp, updateDoc, getDoc } from '../../lib/firebase';
 import { uploadFile } from '../../services/uploadService';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -203,7 +203,12 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
                 </button>
                 {showEmojiPicker && (
                   <div className="absolute bottom-16 right-0 z-50">
-                    <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'} />
+                    <EmojiPicker 
+                      onEmojiClick={handleEmojiClick} 
+                      width={250} 
+                      height={350} 
+                      theme={document.documentElement.classList.contains('dark') ? Theme.DARK : Theme.LIGHT} 
+                    />
                   </div>
                 )}
               </div>

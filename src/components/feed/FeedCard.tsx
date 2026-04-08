@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send, Smile } from 'lucide-react';
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { auth, db, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, getDocs, setDoc, getDoc } from '../../lib/firebase';
 import ActionButtons from './ActionButtons';
 
@@ -308,7 +308,12 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
               </button>
               {showEmojiPicker && (
                 <div className="absolute bottom-12 right-0 z-50">
-                  <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'} />
+                  <EmojiPicker 
+                    onEmojiClick={handleEmojiClick} 
+                    width={250} 
+                    height={350} 
+                    theme={document.documentElement.classList.contains('dark') ? Theme.DARK : Theme.LIGHT} 
+                  />
                 </div>
               )}
               <button 

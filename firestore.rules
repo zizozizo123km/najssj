@@ -208,6 +208,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /admin_settings/broadcast_notification {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /notifications/{notificationId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin();

@@ -17,6 +17,7 @@ import StudyPlanner from './pages/StudyPlanner';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MaintenanceScreen from './components/MaintenanceScreen';
+import BroadcastNotification from './components/BroadcastNotification';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -127,6 +128,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <BroadcastNotification />
       <Router>
         <Routes>
           {/* Admin Routes */}
