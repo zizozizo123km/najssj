@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ThumbsUp, MessageSquare, Share2, Bookmark, MoreHorizontal, Globe, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import CommentSection from './CommentSection';
+import ProfilePreview from '../profile/ProfilePreview';
 
 interface PostCardProps {
   post: any;
@@ -12,6 +13,7 @@ interface PostCardProps {
 
 export default function PostCard({ post, onLike, onSave, onAddComment }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
 
   const extractVideoId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -34,11 +36,12 @@ export default function PostCard({ post, onLike, onSave, onAddComment }: PostCar
           <img 
             src={post.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author}`} 
             alt={post.author} 
-            className="w-10 h-10 rounded-full bg-gray-100"
+            onClick={() => post.authorId && setPreviewUserId(post.authorId)}
+            className="w-10 h-10 rounded-full bg-gray-100 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
           />
-          <div>
+          <div className="cursor-pointer" onClick={() => post.authorId && setPreviewUserId(post.authorId)}>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-gray-900">{post.author}</h3>
+              <h3 className="font-bold text-gray-900 hover:text-blue-600 transition-colors">{post.author}</h3>
               <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                 {post.subject}
               </span>
@@ -119,6 +122,12 @@ export default function PostCard({ post, onLike, onSave, onAddComment }: PostCar
           />
         )}
       </AnimatePresence>
+
+      <ProfilePreview 
+        userId={previewUserId || ''} 
+        isOpen={!!previewUserId} 
+        onClose={() => setPreviewUserId(null)} 
+      />
     </motion.div>
   );
 }

@@ -5,6 +5,7 @@ import { cn, formatDate } from '../lib/utils';
 import { auth, db, doc, updateDoc } from '../lib/firebase';
 
 import { UserProfile, Message, Group } from '../types';
+import ProfilePreview from './profile/ProfilePreview';
 
 interface MessageBubbleProps {
   message: Message;
@@ -27,6 +28,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [editText, setEditText] = useState(message.text);
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [showProfilePreview, setShowProfilePreview] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isAI = message.type === 'ai';
@@ -98,8 +100,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <img
             src={message.senderPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.senderName}`}
             alt={message.senderName}
+            onClick={() => setShowProfilePreview(true)}
             className={cn(
-              "w-8 h-8 rounded-full mt-auto mb-1 flex-shrink-0 border border-slate-200 dark:border-slate-700",
+              "w-8 h-8 rounded-full mt-auto mb-1 flex-shrink-0 border border-slate-200 dark:border-slate-700 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all",
               isOwn ? "ml-2" : "mr-2"
             )}
           />
@@ -114,7 +117,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               "flex items-center gap-1.5 mb-1",
               isOwn ? "mr-1" : "ml-1"
             )}>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span 
+                className="text-xs font-semibold text-slate-500 dark:text-slate-400 cursor-pointer hover:text-indigo-600 transition-colors"
+                onClick={() => setShowProfilePreview(true)}
+              >
                 {message.senderName}
               </span>
               {isModerator && (
@@ -283,6 +289,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         </div>
       </div>
+      <ProfilePreview 
+        userId={message.senderId} 
+        isOpen={showProfilePreview} 
+        onClose={() => setShowProfilePreview(false)} 
+      />
     </motion.div>
   );
 };

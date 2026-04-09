@@ -4,6 +4,7 @@ import { Play, BookOpen, FileText, MoreVertical, Trash2, Edit2, Send, Smile } fr
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { auth, db, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, getDocs, setDoc, getDoc } from '../../lib/firebase';
 import ActionButtons from './ActionButtons';
+import ProfilePreview from '../profile/ProfilePreview';
 
 interface FeedCardProps {
   item: {
@@ -33,6 +34,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
   const [newComment, setNewComment] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
 
   const handleEmojiClick = (emojiObject: any) => { 
     setNewComment(prev => prev + emojiObject.emoji); 
@@ -138,7 +140,10 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
       {/* Author Info & Menu */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-gray-50 dark:border-gray-800 overflow-hidden shadow-sm">
+          <div 
+            className="w-10 h-10 rounded-full border-2 border-gray-50 dark:border-gray-800 overflow-hidden shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+            onClick={() => item.authorId && setPreviewUserId(item.authorId)}
+          >
             <img 
               src={item.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.authorName}`} 
               alt={item.authorName}
@@ -146,8 +151,8 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
               referrerPolicy="no-referrer"
             />
           </div>
-          <div>
-            <h4 className="text-sm font-black text-gray-900 dark:text-white">{item.authorName}</h4>
+          <div className="cursor-pointer" onClick={() => item.authorId && setPreviewUserId(item.authorId)}>
+            <h4 className="text-sm font-black text-gray-900 dark:text-white hover:text-blue-600 transition-colors">{item.authorName}</h4>
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{item.date}</p>
           </div>
         </div>
@@ -286,11 +291,17 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                     <img 
                       src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorName}`} 
                       alt={comment.authorName}
-                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 object-cover"
+                      onClick={() => comment.user_id && setPreviewUserId(comment.user_id)}
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 object-cover cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                       referrerPolicy="no-referrer"
                     />
                     <div className="flex-1 bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-3 rounded-tr-none border border-transparent dark:border-gray-800">
-                      <h5 className="text-xs font-black text-gray-900 dark:text-white mb-1">{comment.authorName}</h5>
+                      <h5 
+                        className="text-xs font-black text-gray-900 dark:text-white mb-1 cursor-pointer hover:text-blue-600 transition-colors"
+                        onClick={() => comment.user_id && setPreviewUserId(comment.user_id)}
+                      >
+                        {comment.authorName}
+                      </h5>
                       <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">{comment.content}</p>
                     </div>
                   </div>
@@ -334,6 +345,12 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ProfilePreview 
+        userId={previewUserId || ''} 
+        isOpen={!!previewUserId} 
+        onClose={() => setPreviewUserId(null)} 
+      />
     </motion.div>
   );
 }

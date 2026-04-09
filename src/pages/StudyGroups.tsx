@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auth, db, collection, query, orderBy, onSnapshot, doc, getDoc, writeBatch, setDoc } from '../lib/firebase';
-import { BAC_BRANCHES } from '../data/baccalaureate';
+import { BAC_BRANCHES, BAC_SUBJECTS } from '../data/baccalaureate';
 import { UserProfile, Group } from '../types';
 
 export default function StudyGroups() {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Send } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import ProfilePreview from '../profile/ProfilePreview';
 
 interface CommentSectionProps {
   comments: any[];
@@ -9,6 +10,7 @@ interface CommentSectionProps {
 
 export default function CommentSection({ comments, onAddComment }: CommentSectionProps) {
   const [text, setText] = useState('');
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +32,17 @@ export default function CommentSection({ comments, onAddComment }: CommentSectio
             <img 
               src={comment.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author}`} 
               alt={comment.author} 
-              className="w-8 h-8 rounded-full bg-gray-200"
+              onClick={() => comment.userId && setPreviewUserId(comment.userId)}
+              className="w-8 h-8 rounded-full bg-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
             />
             <div className="flex-1 bg-white p-3 rounded-2xl rounded-tr-none shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-1">
-                <span className="font-bold text-xs text-gray-900">{comment.author}</span>
+                <span 
+                  className="font-bold text-xs text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => comment.userId && setPreviewUserId(comment.userId)}
+                >
+                  {comment.author}
+                </span>
                 <span className="text-[10px] text-gray-400">{comment.time}</span>
               </div>
               <p className="text-xs text-gray-700 leading-relaxed">{comment.text}</p>
@@ -59,6 +67,12 @@ export default function CommentSection({ comments, onAddComment }: CommentSectio
           <Send size={16} />
         </button>
       </form>
+
+      <ProfilePreview 
+        userId={previewUserId || ''} 
+        isOpen={!!previewUserId} 
+        onClose={() => setPreviewUserId(null)} 
+      />
     </motion.div>
   );
 }
