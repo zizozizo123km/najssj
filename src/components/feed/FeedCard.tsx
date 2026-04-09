@@ -15,6 +15,7 @@ interface FeedCardProps {
     authorId?: string;
     authorAvatar?: string;
     thumbnail?: string;
+    pdf_url?: string;
     date: string;
     tags?: string[];
   };
@@ -257,7 +258,13 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
         isLiked={isLikedByMe}
         onLike={handleLike}
         onComment={() => setShowComments(!showComments)}
-        onAnalyze={() => console.log('Analyze', item.id)}
+        onAnalyze={() => {
+          if (item.type === 'book' && item.pdf_url) {
+            window.open(item.pdf_url, '_blank');
+          } else {
+            console.log('Analyze', item.id);
+          }
+        }}
         onTest={() => console.log('Test', item.id)}
       />
 

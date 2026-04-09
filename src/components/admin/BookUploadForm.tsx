@@ -213,13 +213,18 @@ export default function BookUploadForm() {
                 />
               </div>
             ) : (
-              <input
-                type="url"
-                value={pdfUrl}
-                onChange={(e) => setPdfUrl(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-colors text-left dir-ltr"
-                placeholder="https://example.com/book.pdf"
-              />
+              <div className="space-y-2">
+                <input
+                  type="url"
+                  value={pdfUrl}
+                  onChange={(e) => setPdfUrl(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 transition-colors text-left dir-ltr"
+                  placeholder="https://drive.google.com/file/d/..."
+                />
+                <p className="text-[10px] text-gray-500 font-bold px-1">
+                  * سيتم حفظ الرابط مباشرة في قاعدة البيانات دون رفعه لـ Cloudinary.
+                </p>
+              </div>
             )}
           </div>
 

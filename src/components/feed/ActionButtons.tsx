@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, Share2, Bookmark, Zap, HelpCircle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, Zap, HelpCircle, BookOpen } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ActionButtonsProps {
@@ -53,6 +53,16 @@ export default function ActionButtons({
           >
             <Zap size={14} fill="currentColor" />
             <span>تحليل بالذكاء الاصطناعي</span>
+          </motion.button>
+        )}
+        {type === 'book' && (
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={onAnalyze} // Reusing onAnalyze for 'Read' action or adding a new prop
+            className="flex items-center gap-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 px-3 py-1.5 rounded-lg text-xs font-black hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+          >
+            <BookOpen size={14} />
+            <span>قراءة الكتاب</span>
           </motion.button>
         )}
         {type === 'post' && (
