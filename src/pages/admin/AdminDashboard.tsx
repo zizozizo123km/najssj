@@ -100,7 +100,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans dir-rtl flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col md:flex-row" dir="rtl">
       {/* Admin Sidebar */}
       <div className="w-full md:w-64 bg-gray-800 border-b md:border-b-0 md:border-l border-gray-700 p-4 flex flex-col">
         <div className="flex items-center justify-between md:justify-center mb-8">
