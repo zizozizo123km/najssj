@@ -178,12 +178,12 @@ service cloud.firestore {
 
     match /chat_groups/{groupId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin() || (isAuthenticated() && (groupId.matches('^branch_.*$') || request.resource.data.isPrivate == true));
+      allow create: if isAdmin() || (isAuthenticated() && groupId.matches('^branch_.*$') && request.resource.data.keys().hasAll(['name', 'branch', 'memberCount', 'isLocked', 'createdAt']));
       allow update: if isAuthenticated() && (
         isAdmin() || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'memberCount', 'pinnedMessageId', 'memberIds'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'memberCount', 'pinnedMessageId'])
       );
-      allow delete: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.creatorId);
+      allow delete: if isAdmin();
     }
 
     match /chat_messages/{messageId} {

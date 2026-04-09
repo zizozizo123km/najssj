@@ -13,7 +13,6 @@ interface MessageBubbleProps {
   onDelete?: (id: string) => void;
   onPin?: (id: string) => void;
   onRemoveUser?: (userId: string) => void;
-  onAvatarClick?: (uid: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -23,7 +22,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onDelete,
   onPin,
   onRemoveUser,
-  onAvatarClick,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -101,10 +99,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             src={message.senderPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.senderName}`}
             alt={message.senderName}
             className={cn(
-              "w-8 h-8 rounded-full mt-auto mb-1 flex-shrink-0 border border-slate-200 dark:border-slate-700 cursor-pointer",
+              "w-8 h-8 rounded-full mt-auto mb-1 flex-shrink-0 border border-slate-200 dark:border-slate-700",
               isOwn ? "ml-2" : "mr-2"
             )}
-            onClick={() => onAvatarClick?.(message.senderId)}
           />
         )}
 

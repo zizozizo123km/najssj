@@ -28,8 +28,7 @@ import {
   increment,
   Timestamp,
   handleFirestoreError,
-  OperationType,
-  onAuthStateChanged
+  OperationType
 } from '../lib/firebase';
 import { UserProfile, Message, Group, MessageType } from '../types';
 import { ChatHeader } from '../components/ChatHeader';
@@ -38,8 +37,6 @@ import { MessageInput } from '../components/MessageInput';
 import { AIHelpButton } from '../components/AIHelpButton';
 import { OnlineMembersPanel } from '../components/OnlineMembersPanel';
 import { askAI } from '../lib/gemini';
-
-import MiniProfileModal from '../components/profile/MiniProfileModal';
 
 export default function ChatRoom() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -51,24 +48,16 @@ export default function ChatRoom() {
   const [showMembers, setShowMembers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState(auth.currentUser);
+  const user = auth.currentUser;
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-    });
-    return () => unsubscribeAuth();
-  }, []);
 
   useEffect(() => {
     if (!groupId) return;
 
     const fetchProfile = async () => {
-      if (currentUser) {
+      if (user) {
         try {
-          const profileDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
+          const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
           if (profileDoc.exists()) {
             const data = profileDoc.data();
             setUserProfile({
@@ -136,7 +125,7 @@ export default function ChatRoom() {
         updateDoc(doc(db, 'chat_groups', groupId), { memberCount: increment(-1) }).catch(console.error);
       }
     };
-  }, [groupId, navigate, currentUser]);
+  }, [groupId, navigate, user]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -275,7 +264,6 @@ export default function ChatRoom() {
                 isModerator={userProfile?.role === 'admin'}
                 onDelete={handleDeleteMessage}
                 onPin={handlePinMessage}
-                onAvatarClick={setSelectedUserId}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -296,12 +284,6 @@ export default function ChatRoom() {
           />
         )}
       </AnimatePresence>
-
-      <MiniProfileModal 
-        userId={selectedUserId || ''} 
-        isOpen={!!selectedUserId} 
-        onClose={() => setSelectedUserId(null)} 
-      />
     </div>
   );
 }

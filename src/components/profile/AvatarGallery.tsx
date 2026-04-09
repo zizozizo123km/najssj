@@ -7,14 +7,12 @@ interface AvatarGalleryProps {
 }
 
 const avatars = [
-  { id: 'm1', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/yhip0pgxiplixjvmphmn', gender: 'male' },
-  { id: 'm2', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/qbjp2ckvwy6zusiqu95i', gender: 'male' },
-  { id: 'm3', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/tsv5rgkqoddmudbudxgd', gender: 'male' },
-  { id: 'm4', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/zu5tbmb5ulnf13aj2urs', gender: 'male' },
-  { id: 'c1', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/tykcejevjdefrdntffv6', gender: 'custom' },
-  { id: 'c2', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/csf3tghabjutixnqvnff', gender: 'custom' },
-  { id: 'c3', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/ojctwpwfscrx90faosxk', gender: 'custom' },
-  { id: 'c4', url: 'https://res.cloudinary.com/dbmokwazr/image/upload/v1/qo14ohwu63usjw1mrokb', gender: 'custom' },
+  { id: 'b1', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', gender: 'male' },
+  { id: 'b2', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', gender: 'male' },
+  { id: 'b3', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Christian', gender: 'male' },
+  { id: 'g1', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sasha', gender: 'female' },
+  { id: 'g2', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mimi', gender: 'female' },
+  { id: 'g3', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Titi', gender: 'female' },
 ];
 
 export default function AvatarGallery({ selectedAvatar, onSelect }: AvatarGalleryProps) {

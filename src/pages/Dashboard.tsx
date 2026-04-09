@@ -5,7 +5,6 @@ import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAut
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
-import MiniProfileModal from '../components/profile/MiniProfileModal';
 
 export default function Dashboard() {
   const [feed, setFeed] = useState<any[]>([]);
@@ -16,7 +15,6 @@ export default function Dashboard() {
   const [editingPost, setEditingPost] = useState<any>(null);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [stats, setStats] = useState({ summaries: 0, videos: 0, successRate: 0 });
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -187,7 +185,6 @@ export default function Dashboard() {
                 onClick={() => console.log('Open', item.id)}
                 onDelete={item.authorId === currentUserId ? handleDeletePost : undefined}
                 onEdit={item.authorId === currentUserId ? handleEditPost : undefined}
-                onAvatarClick={setSelectedUserId}
               />
           ))}
         </AnimatePresence>
@@ -261,12 +258,6 @@ export default function Dashboard() {
           </>
         )}
       </AnimatePresence>
-
-      <MiniProfileModal 
-        userId={selectedUserId || ''} 
-        isOpen={!!selectedUserId} 
-        onClose={() => setSelectedUserId(null)} 
-      />
     </div>
   );
 }
