@@ -60,29 +60,27 @@ export default function StudyGroups() {
     setLoading(true);
     try {
       const batch = writeBatch(db);
-      for (const branch of BAC_BRANCHES) {
-        const groupId = `branch_${branch.id}`;
-        const groupRef = doc(db, 'chat_groups', groupId);
-        batch.set(groupRef, {
-          name: `سيرفر شعبة ${branch.name}`,
-          branch: branch.id,
-          memberCount: 0,
-          isLocked: false,
-          createdAt: new Date()
-        }, { merge: true });
-      }
+      const groupId = `general_group`;
+      const groupRef = doc(db, 'chat_groups', groupId);
+      batch.set(groupRef, {
+        name: `مجموعة الشعبة كاملة`,
+        branch: 'all',
+        memberCount: 0,
+        isLocked: false,
+        createdAt: new Date()
+      }, { merge: true });
 
       await batch.commit();
-      alert("تم تهيئة سيرفرات الشعب بنجاح!");
+      alert("تم تهيئة المجموعة بنجاح!");
     } catch (error) {
       console.error("Error initializing groups:", error);
-      alert("حدث خطأ أثناء تهيئة السيرفرات.");
+      alert("حدث خطأ أثناء تهيئة المجموعة.");
     }
     setLoading(false);
   };
 
   const clearGroups = async () => {
-    if (!isAdmin || !window.confirm("هل أنت متأكد من حذف جميع السيرفرات؟")) return;
+    if (!isAdmin || !window.confirm("هل أنت متأكد من حذف المجموعة؟")) return;
     
     setLoading(true);
     try {
@@ -91,7 +89,7 @@ export default function StudyGroups() {
         batch.delete(doc(db, 'chat_groups', group.id));
       });
       await batch.commit();
-      alert("تم حذف جميع السيرفرات بنجاح!");
+      alert("تم حذف المجموعة بنجاح!");
     } catch (error) {
       console.error("Error clearing groups:", error);
     }
@@ -103,8 +101,8 @@ export default function StudyGroups() {
       <div className="bg-white dark:bg-slate-900 px-6 pt-12 pb-6 shadow-sm sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">سيرفرات الشعب (لوحة الإدارة)</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة سيرفرات الدردشة الخاصة بكل شعبة.</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">مجموعة الشعبة</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">مجموعة الدردشة الخاصة بالشعبة كاملة.</p>
           </div>
           <div className="flex gap-2">
             {isAdmin && groups.length > 0 && (
@@ -131,7 +129,7 @@ export default function StudyGroups() {
               className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95 transition-all"
             >
               <AlertCircle size={20} />
-              تهيئة سيرفرات الشعب
+              تهيئة مجموعة الشعبة
             </button>
           ) : (
             <button
@@ -139,7 +137,7 @@ export default function StudyGroups() {
               className="flex-1 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 active:scale-95 transition-all"
             >
               <Sparkles size={20} className="text-indigo-500" />
-              تحديث السيرفرات
+              تحديث المجموعة
             </button>
           )}
         </div>
@@ -148,9 +146,7 @@ export default function StudyGroups() {
       <div className="p-6 space-y-6 max-w-4xl mx-auto">
         {/* All Groups (Branch) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {userProfile && groups.filter(g => 
-            g.branch === (userProfile.branch || 'sciences')
-          ).map((group, index) => (
+          {groups.map((group, index) => (
             <motion.div
               key={group.id}
               initial={{ opacity: 0, y: 20 }}

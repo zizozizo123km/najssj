@@ -16,7 +16,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
-import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
+import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs, setDoc } from '../lib/firebase';
 import { updateProfile } from 'firebase/auth';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
@@ -69,74 +69,78 @@ export default function Profile() {
       console.error("Error loading study plan from localStorage:", e);
     }
     
-    if (!auth.currentUser) {
-      navigate('/login');
-      return;
-    }
-
-    const unsubscribe = onSnapshot(doc(db, 'profiles', auth.currentUser.uid), async (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        
-        // Calculate real stats
-        const userId = auth.currentUser!.uid;
-        const [summariesSnap, videosSnap, quizzesSnap] = await Promise.all([
-          getDocs(query(collection(db, 'summaries'), where('user_id', '==', userId))),
-          getDocs(query(collection(db, 'watched_videos'), where('user_id', '==', userId))),
-          getDocs(query(collection(db, 'quiz_sessions'), where('user_id', '==', userId)))
-        ]);
-
-        const completedQuizzes = quizzesSnap.size;
-        let totalScore = 0;
-        let totalQuestions = 0;
-        quizzesSnap.forEach(doc => {
-          const d = doc.data();
-          totalScore += d.score || 0;
-          totalQuestions += d.total_questions || 0;
-        });
-        const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
-
-        setUser({
-          displayName: data.full_name || auth.currentUser?.displayName || 'مستخدم جديد',
-          email: auth.currentUser?.email || null,
-          photoURL: data.avatar_url || auth.currentUser?.photoURL || null,
-          avatarId: data.avatar_id || null,
-          branch: data.branch || 'sciences',
-          favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
-          stats: {
-            savedSummaries: summariesSnap.size,
-            analyzedVideos: videosSnap.size,
-            completedQuizzes: completedQuizzes,
-            successRate: successRate,
-          },
-          activities: Array.isArray(data.activities) ? data.activities : []
-        });
-      } else {
-        // Fallback if profile doc doesn't exist yet
-        setUser({
-          displayName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'مستخدم جديد',
-          email: auth.currentUser?.email || null,
-          photoURL: auth.currentUser?.photoURL || null,
-          avatarId: null,
-          branch: 'sciences',
-          favoriteSubjects: ['الرياضيات', 'الفيزياء'],
-          stats: {
-            savedSummaries: 0,
-            analyzedVideos: 0,
-            completedQuizzes: 0,
-            successRate: 0,
-          },
-          activities: []
-        });
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        navigate('/login');
+        return;
       }
-      setLoading(false);
-    }, (err) => {
-      console.error("Firestore Error:", err);
-      setError("حدث خطأ في الاتصال بقاعدة البيانات.");
-      setLoading(false);
+
+      const unsubscribeProfile = onSnapshot(doc(db, 'profiles', currentUser.uid), async (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          
+          // Calculate real stats
+          const userId = currentUser.uid;
+          const [summariesSnap, videosSnap, quizzesSnap] = await Promise.all([
+            getDocs(query(collection(db, 'summaries'), where('user_id', '==', userId))),
+            getDocs(query(collection(db, 'watched_videos'), where('user_id', '==', userId))),
+            getDocs(query(collection(db, 'quiz_sessions'), where('user_id', '==', userId)))
+          ]);
+
+          const completedQuizzes = quizzesSnap.size;
+          let totalScore = 0;
+          let totalQuestions = 0;
+          quizzesSnap.forEach(doc => {
+            const d = doc.data();
+            totalScore += d.score || 0;
+            totalQuestions += d.total_questions || 0;
+          });
+          const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
+          setUser({
+            displayName: data.full_name || currentUser.displayName || 'مستخدم جديد',
+            email: currentUser.email || null,
+            photoURL: data.avatar_url || currentUser.photoURL || null,
+            avatarId: data.avatar_id || null,
+            branch: data.branch || 'sciences',
+            favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
+            stats: {
+              savedSummaries: summariesSnap.size,
+              analyzedVideos: videosSnap.size,
+              completedQuizzes: completedQuizzes,
+              successRate: successRate,
+            },
+            activities: Array.isArray(data.activities) ? data.activities : []
+          });
+        } else {
+          // Fallback if profile doc doesn't exist yet
+          setUser({
+            displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'مستخدم جديد',
+            email: currentUser.email || null,
+            photoURL: currentUser.photoURL || null,
+            avatarId: null,
+            branch: 'sciences',
+            favoriteSubjects: ['الرياضيات', 'الفيزياء'],
+            stats: {
+              savedSummaries: 0,
+              analyzedVideos: 0,
+              completedQuizzes: 0,
+              successRate: 0,
+            },
+            activities: []
+          });
+        }
+        setLoading(false);
+      }, (err) => {
+        console.error("Firestore Error:", err);
+        setError("حدث خطأ في الاتصال بقاعدة البيانات.");
+        setLoading(false);
+      });
+
+      return () => unsubscribeProfile();
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -151,14 +155,14 @@ export default function Profile() {
           displayName: newData.displayName,
           photoURL: newData.photoURL
         });
-        await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
+        await setDoc(doc(db, 'profiles', auth.currentUser.uid), {
           full_name: newData.displayName,
           avatar_url: newData.photoURL,
           avatar_id: newData.avatarId || null,
           branch: newData.branch,
           favorite_subjects: newData.favoriteSubjects,
           updated_at: serverTimestamp()
-        });
+        }, { merge: true });
 
         setIsEditing(false);
       } catch (err) {
