@@ -22,9 +22,10 @@ interface FeedCardProps {
   onClick?: () => void;
   onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onAvatarClick?: (uid: string) => void;
 }
 
-export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardProps) {
+export default function FeedCard({ item, onClick, onDelete, onEdit, onAvatarClick }: FeedCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isLikedByMe, setIsLikedByMe] = useState(false);
@@ -102,7 +103,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
       await addDoc(collection(db, 'posts', item.id, 'comments'), {
         user_id: user.uid,
         author_name: profileData?.full_name || user.displayName || user.email?.split('@')[0] || 'مستخدم',
-        author_avatar: user.photoURL || null,
+        author_avatar: profileData?.avatar_url || user.photoURL || null,
         content: newComment.trim(),
         created_at: serverTimestamp()
       });
@@ -138,7 +139,10 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
       {/* Author Info & Menu */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-gray-50 dark:border-gray-800 overflow-hidden shadow-sm">
+          <div 
+            className="w-10 h-10 rounded-full border-2 border-gray-50 dark:border-gray-800 overflow-hidden shadow-sm cursor-pointer"
+            onClick={() => item.authorId && onAvatarClick?.(item.authorId)}
+          >
             <img 
               src={item.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.authorName}`} 
               alt={item.authorName}
@@ -286,8 +290,9 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
                     <img 
                       src={comment.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorName}`} 
                       alt={comment.authorName}
-                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 object-cover"
+                      className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 object-cover cursor-pointer"
                       referrerPolicy="no-referrer"
+                      onClick={() => comment.user_id && onAvatarClick?.(comment.user_id)}
                     />
                     <div className="flex-1 bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-3 rounded-tr-none border border-transparent dark:border-gray-800">
                       <h5 className="text-xs font-black text-gray-900 dark:text-white mb-1">{comment.authorName}</h5>

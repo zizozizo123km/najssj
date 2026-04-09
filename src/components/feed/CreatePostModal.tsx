@@ -83,7 +83,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated, editPo
         subject: subject || 'أخرى',
         author_id: user.uid,
         author_name: profileData?.full_name || user.displayName || user.email?.split('@')[0] || 'مستخدم',
-        author_avatar: user.photoURL || null,
+        author_avatar: profileData?.avatar_url || user.photoURL || null,
         thumbnail: thumbnailUrl,
         updated_at: serverTimestamp()
       };

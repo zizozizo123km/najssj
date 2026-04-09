@@ -17,6 +17,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
+import { updateProfile } from 'firebase/auth';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
 import ProgressCard from '../components/profile/ProgressCard';
@@ -146,6 +147,10 @@ export default function Profile() {
   const handleSaveSettings = async (newData: any) => {
     if (user && auth.currentUser) {
       try {
+        await updateProfile(auth.currentUser, {
+          displayName: newData.displayName,
+          photoURL: newData.photoURL
+        });
         await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
           full_name: newData.displayName,
           avatar_url: newData.photoURL,

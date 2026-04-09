@@ -6,6 +6,7 @@ import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from
 import CreatePostModal from '../components/feed/CreatePostModal';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
+import MiniProfileModal from '../components/profile/MiniProfileModal';
 
 const SUBJECTS = [
   'الكل', 'ملاحظاتي', 'رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 
@@ -18,6 +19,7 @@ export default function Posts() {
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const [filter, setFilter] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,6 +186,7 @@ export default function Posts() {
                   onClick={() => console.log('Open', post.id)}
                   onDelete={post.authorId === user?.uid ? handleDeletePost : undefined}
                   onEdit={post.authorId === user?.uid ? handleEditPost : undefined}
+                  onAvatarClick={setSelectedUserId}
                 />
               ))}
             </AnimatePresence>
@@ -247,6 +250,11 @@ export default function Posts() {
         </div>
 
       </div>
+      <MiniProfileModal 
+        userId={selectedUserId || ''} 
+        isOpen={!!selectedUserId} 
+        onClose={() => setSelectedUserId(null)} 
+      />
     </div>
   );
 }

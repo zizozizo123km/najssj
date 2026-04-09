@@ -37,6 +37,9 @@ export interface Group {
   subject: string;
   description?: string;
   isLocked?: boolean;
+  isPrivate?: boolean;
+  creatorId?: string;
+  memberIds?: string[];
   pinnedMessageId?: string;
   lastMessage?: {
     text: string;

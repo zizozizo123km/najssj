@@ -38,6 +38,8 @@ import { AIHelpButton } from '../components/AIHelpButton';
 import { OnlineMembersPanel } from '../components/OnlineMembersPanel';
 import { askAI } from '../lib/gemini';
 
+import MiniProfileModal from '../components/profile/MiniProfileModal';
+
 export default function ChatRoom() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
@@ -48,6 +50,7 @@ export default function ChatRoom() {
   const [showMembers, setShowMembers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const user = auth.currentUser;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -264,6 +267,7 @@ export default function ChatRoom() {
                 isModerator={userProfile?.role === 'admin'}
                 onDelete={handleDeleteMessage}
                 onPin={handlePinMessage}
+                onAvatarClick={setSelectedUserId}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -284,6 +288,12 @@ export default function ChatRoom() {
           />
         )}
       </AnimatePresence>
+
+      <MiniProfileModal 
+        userId={selectedUserId || ''} 
+        isOpen={!!selectedUserId} 
+        onClose={() => setSelectedUserId(null)} 
+      />
     </div>
   );
 }
