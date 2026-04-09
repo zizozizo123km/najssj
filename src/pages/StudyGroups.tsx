@@ -35,6 +35,8 @@ export default function StudyGroups() {
         setUserProfile(profile as UserProfile);
         const isAdminUser = profile.role === 'admin' || user.email === 'dzs325105@gmail.com' || user.email === 'nacero123@gmail.com';
         setIsAdmin(isAdminUser);
+      } else {
+        setUserProfile({ branch: 'sciences' } as UserProfile);
       }
     });
 

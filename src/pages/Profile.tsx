@@ -16,7 +16,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
-import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
+import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs, setDoc } from '../lib/firebase';
 import { updateProfile } from 'firebase/auth';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
@@ -151,14 +151,14 @@ export default function Profile() {
           displayName: newData.displayName,
           photoURL: newData.photoURL
         });
-        await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
+        await setDoc(doc(db, 'profiles', auth.currentUser.uid), {
           full_name: newData.displayName,
           avatar_url: newData.photoURL,
           avatar_id: newData.avatarId || null,
           branch: newData.branch,
           favorite_subjects: newData.favoriteSubjects,
           updated_at: serverTimestamp()
-        });
+        }, { merge: true });
 
         setIsEditing(false);
       } catch (err) {
