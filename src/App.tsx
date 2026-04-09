@@ -50,11 +50,20 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
               </svg>
             </div>
             <h1 className="text-2xl font-black text-gray-900 mb-4">عذراً، حدث خطأ في الاتصال!</h1>
-            <p className="text-gray-600 mb-8 leading-relaxed">
+            <p className="text-gray-600 mb-4 leading-relaxed">
               {isFirebaseError 
                 ? "يبدو أن هناك مشكلة في الاتصال بقاعدة البيانات Firebase. يرجى التأكد من إعدادات المشروع."
                 : "حدث خطأ غير متوقع في التطبيق. يرجى المحاولة مرة أخرى."}
             </p>
+            {this.state.error && (
+              <div className="bg-red-50 p-4 rounded-xl text-left overflow-auto max-h-48 mb-8 border border-red-100">
+                <p className="text-red-600 font-mono text-xs break-words whitespace-pre-wrap" dir="ltr">
+                  {this.state.error.toString()}
+                  {'\n'}
+                  {this.state.error.stack}
+                </p>
+              </div>
+            )}
             <div className="space-y-3">
               <button 
                 onClick={() => window.location.reload()}
