@@ -36,29 +36,26 @@ export default function VirtualTeacher() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (!user) return;
+    const user = auth.currentUser;
+    if (!user) return;
 
-      const unsubscribeProfile = onSnapshot(doc(db, 'profiles', user.uid), (snapshot) => {
-        if (snapshot.exists()) {
-          const profile = snapshot.data();
-          setUserProfile(profile);
-          const branch = profile.branch || 'sciences';
-          const subjects = BAC_SUBJECTS[branch] || BAC_SUBJECTS['sciences'];
-          setAvailableSubjects(subjects);
-          if (!selectedSubject && subjects.length > 0) {
-            setSelectedSubject(subjects[0].name);
-          }
+    const unsubscribe = onSnapshot(doc(db, 'profiles', user.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        const profile = snapshot.data();
+        setUserProfile(profile);
+        const branch = profile.branch || 'sciences';
+        const subjects = BAC_SUBJECTS[branch] || BAC_SUBJECTS['sciences'];
+        setAvailableSubjects(subjects);
+        if (!selectedSubject && subjects.length > 0) {
+          setSelectedSubject(subjects[0].name);
         }
-      }, (error) => {
-        console.error("Error fetching profile for virtual teacher:", error);
-      });
-
-      return () => unsubscribeProfile();
+      }
+    }, (error) => {
+      console.error("Error fetching profile for virtual teacher:", error);
     });
 
-    return () => unsubscribeAuth();
-  }, [selectedSubject]);
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
