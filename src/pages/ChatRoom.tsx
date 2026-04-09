@@ -28,7 +28,8 @@ import {
   increment,
   Timestamp,
   handleFirestoreError,
-  OperationType
+  OperationType,
+  onAuthStateChanged
 } from '../lib/firebase';
 import { UserProfile, Message, Group, MessageType } from '../types';
 import { ChatHeader } from '../components/ChatHeader';
@@ -51,16 +52,23 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const user = auth.currentUser;
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     if (!groupId) return;
 
     const fetchProfile = async () => {
-      if (user) {
+      if (currentUser) {
         try {
-          const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+          const profileDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
           if (profileDoc.exists()) {
             const data = profileDoc.data();
             setUserProfile({
@@ -128,7 +136,7 @@ export default function ChatRoom() {
         updateDoc(doc(db, 'chat_groups', groupId), { memberCount: increment(-1) }).catch(console.error);
       }
     };
-  }, [groupId, navigate, user]);
+  }, [groupId, navigate, currentUser]);
 
   const scrollToBottom = () => {
     setTimeout(() => {

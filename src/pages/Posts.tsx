@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Award, Filter, Search, Bookmark } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../lib/firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged } from '../lib/firebase';
 import CreatePostModal from '../components/feed/CreatePostModal';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
@@ -24,7 +24,14 @@ export default function Posts() {
   const [filter, setFilter] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const user = auth.currentUser;
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('created_at', 'desc'));
@@ -184,8 +191,8 @@ export default function Posts() {
                   key={post.id} 
                   item={post} 
                   onClick={() => console.log('Open', post.id)}
-                  onDelete={post.authorId === user?.uid ? handleDeletePost : undefined}
-                  onEdit={post.authorId === user?.uid ? handleEditPost : undefined}
+                  onDelete={post.authorId === currentUser?.uid ? handleDeletePost : undefined}
+                  onEdit={post.authorId === currentUser?.uid ? handleEditPost : undefined}
                   onAvatarClick={setSelectedUserId}
                 />
               ))}

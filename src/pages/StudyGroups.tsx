@@ -57,7 +57,7 @@ export default function StudyGroups() {
   }, [navigate]);
 
   const initializeGroups = async () => {
-    if (!isAdmin) return;
+    if (!isAdmin && groups.length > 0) return;
     
     setLoading(true);
     try {
@@ -125,7 +125,7 @@ export default function StudyGroups() {
         </div>
       </div>
 
-      {isAdmin && !loading && (
+      {(!loading && (isAdmin || groups.length === 0)) && (
         <div className="p-6 flex gap-3">
           {groups.length === 0 ? (
             <button
@@ -135,7 +135,7 @@ export default function StudyGroups() {
               <AlertCircle size={20} />
               تهيئة سيرفرات الشعب
             </button>
-          ) : (
+          ) : isAdmin ? (
             <button
               onClick={initializeGroups}
               className="flex-1 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 active:scale-95 transition-all"
@@ -143,7 +143,7 @@ export default function StudyGroups() {
               <Sparkles size={20} className="text-indigo-500" />
               تحديث السيرفرات
             </button>
-          )}
+          ) : null}
         </div>
       )}
 
