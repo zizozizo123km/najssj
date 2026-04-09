@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, ExternalLink, Pin, Trash2, UserMinus, Edit2, Smile, MoreVertical } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
-import { auth, db, doc, updateDoc } from '../lib/firebase';
+import { auth, db, doc, updateDoc, handleFirestoreError, OperationType, deleteField } from '../lib/firebase';
 
 import { UserProfile, Message, Group } from '../types';
 import ProfilePreview from './profile/ProfilePreview';
@@ -53,25 +53,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       setIsEditing(false);
       setShowMenu(false);
     } catch (error) {
-      console.error('Error updating message:', error);
+      handleFirestoreError(error, OperationType.UPDATE, `chat_messages/${message.id}`);
     }
   };
 
   const handleReact = async (emoji: string) => {
     try {
-      const reactions = message.reactions || {};
       const userId = auth.currentUser?.uid;
       if (!userId) return;
 
+      const reactions = message.reactions || {};
       const userReaction = reactions[userId];
+      
       if (userReaction === emoji) {
-        delete reactions[userId];
+        // Remove reaction using dot notation
+        await updateDoc(doc(db, 'chat_messages', message.id), {
+          [`reactions.${userId}`]: deleteField()
+        });
       } else {
-        reactions[userId] = emoji;
+        // Add/Update reaction using dot notation
+        await updateDoc(doc(db, 'chat_messages', message.id), {
+          [`reactions.${userId}`]: emoji
+        });
       }
-      await updateDoc(doc(db, 'chat_messages', message.id), { reactions });
     } catch (error) {
-      console.error('Error reacting to message:', error);
+      handleFirestoreError(error, OperationType.UPDATE, `chat_messages/${message.id}`);
     }
   };
 

@@ -122,10 +122,22 @@ service cloud.firestore {
     function isValidMessage(data) {
       return hasRequiredFields(['group_id', 'sender_id', 'sender_name', 'text', 'type', 'created_at']) &&
              data.sender_id == request.auth.uid &&
-             data.sender_name is string &&
+             data.sender_name is string && data.sender_name.size() > 0 && data.sender_name.size() < 100 &&
              data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
              data.type in ['text', 'image', 'pdf', 'youtube', 'ai'] &&
-             data.created_at is timestamp;
+             data.created_at is timestamp &&
+             (!('reactions' in data) || data.reactions is map);
+    }
+
+    function isValidReactionUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']) &&
+             request.resource.data.reactions is map &&
+             request.resource.data.reactions.diff(resource.data.get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) &&
+             (
+               !(request.auth.uid in request.resource.data.reactions) || 
+               (request.resource.data.reactions[request.auth.uid] is string && 
+                request.resource.data.reactions[request.auth.uid].size() <= 10)
+             );
     }
 
     // ===============================================================
@@ -192,7 +204,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         isAdmin() || 
         (request.auth.uid == resource.data.sender_id && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])) ||
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])) ||
+        isValidReactionUpdate() ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_pinned']) && isAdmin())
       );
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.sender_id || isAdmin());

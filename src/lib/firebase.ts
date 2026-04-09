@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, limit, onSnapshot, addDoc, Timestamp, serverTimestamp, getDocFromServer, deleteDoc, getDocs, increment, writeBatch, getCountFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, limit, onSnapshot, addDoc, Timestamp, serverTimestamp, getDocFromServer, deleteDoc, getDocs, increment, writeBatch, getCountFromServer, deleteField } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -96,6 +96,7 @@ export {
   getDocs,
   increment,
   writeBatch,
-  getCountFromServer
+  getCountFromServer,
+  deleteField
 };
 export type { User };
