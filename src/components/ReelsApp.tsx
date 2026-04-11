@@ -109,6 +109,15 @@ export default function ReelsApp() {
     }
   };
 
+  if (!API_KEY) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-black text-white p-6 text-center">
+        <h2 className="text-xl font-bold mb-4">مفتاح الـ API مفقود!</h2>
+        <p className="text-sm opacity-70">يرجى إضافة VITE_YOUTUBE_API_KEY في إعدادات البيئة (Environment Variables) لكي تعمل صفحة الريلز.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-black font-sans antialiased overflow-hidden h-screen flex justify-center">
       <div className="w-full max-w-[450px] bg-black h-screen relative shadow-2xl overflow-hidden">
