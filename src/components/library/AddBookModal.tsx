@@ -73,17 +73,17 @@ export default function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" dir="rtl">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm" dir="rtl">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+          initial={{ y: '-100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '-100%' }}
+          className="bg-white dark:bg-gray-900 shadow-2xl w-full h-full flex flex-col"
         >
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              <Upload size={24} className="text-blue-600" />
-              إضافة كتاب جديد
+          <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
+            <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <Upload size={20} className="text-blue-600" />
+              إضافة كتاب
             </h2>
             <button
               onClick={onClose}
@@ -93,81 +93,76 @@ export default function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <BookIcon size={16} />
-                اسم الكتاب *
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
-                placeholder="مثال: كتاب المغني في الرياضيات"
-              />
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'جاري الإضافة...' : 'إضافة الكتاب'}
+              </button>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <User size={16} />
-                المؤلف
-              </label>
-              <input
-                type="text"
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
-                placeholder="اسم المؤلف"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <Tag size={16} />
-                  المادة
+            <div className="p-4 space-y-3 overflow-y-auto flex-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <BookIcon size={14} />
+                  اسم الكتاب *
                 </label>
                 <input
                   type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
-                  placeholder="مثال: رياضيات"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-sm"
+                  placeholder="مثال: كتاب المغني"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                  الشعبة
-                </label>
-                <select
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
-                >
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <ImageIcon size={16} />
-                صورة الغلاف
-              </label>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <User size={14} />
+                    المؤلف
+                  </label>
+                  <input
+                    type="text"
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-sm"
+                    placeholder="اسم المؤلف"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    الشعبة
+                  </label>
+                  <select
+                    value={branch}
+                    onChange={(e) => setBranch(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-sm"
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <ImageIcon size={14} />
+                  صورة الغلاف
+                </label>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 border border-dashed border-gray-300 dark:border-gray-600"
+                    className="flex-1 py-2 px-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 border border-dashed border-gray-300 dark:border-gray-600 text-xs"
                   >
-                    <Upload size={18} />
-                    <span className="truncate max-w-[200px]">
-                      {coverFile ? coverFile.name : 'رفع صورة من الجهاز'}
+                    <Upload size={14} />
+                    <span className="truncate max-w-[120px]">
+                      {coverFile ? coverFile.name : 'رفع صورة'}
                     </span>
                   </button>
                   <input
@@ -177,49 +172,36 @@ export default function AddBookModal({ isOpen, onClose }: AddBookModalProps) {
                     accept="image/*"
                     className="hidden"
                   />
+                  <input
+                    type="url"
+                    value={coverUrl}
+                    onChange={(e) => {
+                      setCoverUrl(e.target.value);
+                      if (e.target.value) setCoverFile(null);
+                    }}
+                    className="w-1/2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-left text-xs"
+                    placeholder="رابط (https://...)"
+                    dir="ltr"
+                  />
                 </div>
-                <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 text-sm">
-                  <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></span>
-                  <span>أو</span>
-                  <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></span>
-                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <LinkIcon size={14} />
+                  رابط ملف PDF *
+                </label>
                 <input
                   type="url"
-                  value={coverUrl}
-                  onChange={(e) => {
-                    setCoverUrl(e.target.value);
-                    if (e.target.value) setCoverFile(null);
-                  }}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-left"
-                  placeholder="رابط صورة الغلاف (https://...)"
+                  required
+                  value={pdfUrl}
+                  onChange={(e) => setPdfUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-left text-sm"
+                  placeholder="https://..."
                   dir="ltr"
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <LinkIcon size={16} />
-                رابط ملف PDF *
-              </label>
-              <input
-                type="url"
-                required
-                value={pdfUrl}
-                onChange={(e) => setPdfUrl(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white text-left"
-                placeholder="https://..."
-                dir="ltr"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-            >
-              {isSubmitting ? 'جاري الإضافة...' : 'إضافة الكتاب'}
-            </button>
           </form>
         </motion.div>
       </div>
