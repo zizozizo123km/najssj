@@ -28,6 +28,7 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
     { name: 'المكتبة', path: '/library', icon: Library },
     { name: 'ملاحظاتي', path: '/posts?filter=saved', icon: Bookmark },
     { name: 'محلل يوتيوب الذكي', path: '/youtube', icon: Youtube },
+    { name: 'فيديوهات البكالوريا', path: '/reels', icon: Video },
     { name: 'اختبارات', path: '/quiz', icon: BookOpen },
     { name: 'جدول الدراسة', path: '/planner', icon: Calendar },
     { name: 'الملف الشخصي', path: '/profile', icon: UserIcon },

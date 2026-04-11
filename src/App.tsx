@@ -18,6 +18,7 @@ import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MaintenanceScreen from './components/MaintenanceScreen';
 import BroadcastNotification from './components/BroadcastNotification';
+import ReelsApp from './components/ReelsApp';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -166,6 +167,7 @@ export default function App() {
                     <Route path="/youtube" element={user ? <YouTubeVideoAnalyzer /> : <Navigate to="/login" />} />
                     <Route path="/planner" element={user ? <StudyPlanner /> : <Navigate to="/login" />} />
                     <Route path="/quiz" element={user ? <Quiz /> : <Navigate to="/login" />} />
+                    <Route path="/reels" element={user ? <ReelsApp /> : <Navigate to="/login" />} />
                     <Route path="/search" element={user ? <div>البحث</div> : <Navigate to="/login" />} />
                   </Routes>
                 </main>
