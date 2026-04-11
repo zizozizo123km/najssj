@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, Mail, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { User, Mail, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles, Target } from 'lucide-react';
 import AvatarGallery from './AvatarGallery';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../../data/baccalaureate';
 
@@ -12,6 +12,7 @@ interface SettingsFormProps {
     avatarId?: string | null;
     branch: string;
     favoriteSubjects: string[];
+    targetScore: number;
   };
   onSave: (data: any) => void;
   onCancel: () => void;
@@ -25,6 +26,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     avatarId: user.avatarId || '',
     branch: user.branch || BAC_BRANCHES[0].id,
     favoriteSubjects: user.favoriteSubjects || [],
+    targetScore: user.targetScore || 15,
     notifications: true,
   });
 
@@ -90,18 +92,35 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           </div>
         </div>
 
-        {/* Branch */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <BookOpen size={16} className="text-purple-500" /> الشعبة الدراسية
-          </label>
-          <select 
-            value={formData.branch}
-            onChange={(e) => setFormData({ ...formData, branch: e.target.value, favoriteSubjects: [] })}
-            className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all"
-          >
-            {BAC_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
-          </select>
+        {/* Branch and Target Score */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <BookOpen size={16} className="text-purple-500" /> الشعبة الدراسية
+            </label>
+            <select 
+              value={formData.branch}
+              onChange={(e) => setFormData({ ...formData, branch: e.target.value, favoriteSubjects: [] })}
+              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all"
+            >
+              {BAC_BRANCHES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <Target size={16} className="text-red-500" /> الهدف (معدل البكالوريا)
+            </label>
+            <input 
+              type="number" 
+              min="10"
+              max="20"
+              step="0.01"
+              value={formData.targetScore}
+              onChange={(e) => setFormData({ ...formData, targetScore: parseFloat(e.target.value) })}
+              className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all text-left"
+              dir="ltr"
+            />
+          </div>
         </div>
 
         {/* Favorite Subjects */}

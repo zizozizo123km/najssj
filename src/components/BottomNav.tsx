@@ -11,13 +11,13 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeItem, onNavigate }) => {
   const navItems = [
-    { id: 'home', icon: Home, label: 'Home' },
-    { id: 'planner', icon: Calendar, label: 'Planner' },
-    { id: 'videos', icon: PlayCircle, label: 'Videos' },
-    { id: 'library', icon: BookOpen, label: 'Library' },
-    { id: 'quiz', icon: LayoutGrid, label: 'Quiz' },
-    { id: 'chat', icon: MessageSquare, label: 'Chat' },
-    { id: 'profile', icon: User, label: 'Profile' },
+    { id: 'home', icon: Home, label: 'الرئيسية' },
+    { id: 'planner', icon: Calendar, label: 'الجدول' },
+    { id: 'videos', icon: PlayCircle, label: 'فيديوهات' },
+    { id: 'library', icon: BookOpen, label: 'المكتبة' },
+    { id: 'quiz', icon: LayoutGrid, label: 'اختبارات' },
+    { id: 'chat', icon: MessageSquare, label: 'دردشة' },
+    { id: 'profile', icon: User, label: 'ملفي' },
   ] as const;
 
   return (

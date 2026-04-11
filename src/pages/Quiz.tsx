@@ -10,19 +10,24 @@ import {
   Loader2, 
   Trophy,
   Lightbulb,
-  ChevronLeft
+  ChevronLeft,
+  Timer,
+  FileText,
+  Zap
 } from 'lucide-react';
 import { Type } from "@google/genai";
 import { getGeminiConfig } from '../lib/gemini';
-import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where } from '../lib/firebase';
+import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where, updateDoc } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_CHAPTERS, BAC_BRANCHES } from '../data/baccalaureate';
 
-type View = 'subjects' | 'chapters' | 'quiz' | 'result';
+type View = 'subjects' | 'chapters' | 'mode' | 'quiz' | 'result';
+type QuizMode = 'practice' | 'exam' | 'challenge';
 
 export default function Quiz() {
   const [view, setView] = useState<View>('subjects');
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [selectedChapter, setSelectedChapter] = useState<any>(null);
+  const [quizMode, setQuizMode] = useState<QuizMode>('practice');
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
@@ -33,6 +38,17 @@ export default function Quiz() {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explainingMistakes, setExplainingMistakes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    let timer: any;
+    if (view === 'quiz' && timeLeft !== null && timeLeft > 0) {
+      timer = setInterval(() => setTimeLeft(prev => prev! - 1), 1000);
+    } else if (timeLeft === 0 && view === 'quiz') {
+      finishQuiz();
+    }
+    return () => clearInterval(timer);
+  }, [timeLeft, view]);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -65,15 +81,20 @@ export default function Quiz() {
     return () => unsubscribe();
   }, []);
 
-  const generateQuiz = async (chapter: any) => {
+  const generateQuiz = async (mode: QuizMode) => {
     setLoading(true);
     setError(null);
-    setSelectedChapter(chapter);
+    setQuizMode(mode);
+    
+    let numQuestions = 5;
+    if (mode === 'exam') numQuestions = 10;
+    if (mode === 'challenge') numQuestions = 10;
+
     try {
       const { client: ai, model } = await getGeminiConfig();
       const response = await ai.models.generateContent({
         model: model,
-        contents: `Generate 5 multiple choice questions for Baccalaureate level in Algeria for chapter: ${chapter.name} in ${selectedSubject.name}. 
+        contents: `Generate ${numQuestions} multiple choice questions for Baccalaureate level in Algeria for chapter: ${selectedChapter.name} in ${selectedSubject.name}. 
         Return ONLY a JSON array of objects with:
         - question (string)
         - options (array of 4 strings)
@@ -101,6 +122,11 @@ export default function Quiz() {
       setQuestions(data);
       setCurrentQuestionIndex(0);
       setUserAnswers({});
+      
+      if (mode === 'exam') setTimeLeft(15 * 60); // 15 minutes
+      else if (mode === 'challenge') setTimeLeft(5 * 60); // 5 minutes
+      else setTimeLeft(null);
+
       setView('quiz');
     } catch (error: any) {
       console.error("Quiz generation error:", error);
@@ -124,7 +150,7 @@ export default function Quiz() {
   };
 
   const handleAnswer = (answer: string) => {
-    if (userAnswers[currentQuestionIndex] !== undefined) return;
+    if (quizMode === 'practice' && userAnswers[currentQuestionIndex] !== undefined) return;
     setUserAnswers({ ...userAnswers, [currentQuestionIndex]: answer });
   };
 
@@ -148,10 +174,15 @@ export default function Quiz() {
           where('date', '==', today)
         ));
         
-        if (dailyQuizzesSnapshot.size >= 5) {
+        if (dailyQuizzesSnapshot.size >= 5 && quizMode === 'practice') {
           alert("لقد تجاوزت الحد اليومي للاختبارات (5 اختبارات). حاول غداً!");
           return;
         }
+
+        // Calculate points based on mode and score
+        let pointsEarned = finalScore * 10;
+        if (quizMode === 'exam') pointsEarned *= 2;
+        if (quizMode === 'challenge') pointsEarned *= 3;
 
         await addDoc(collection(db, 'quiz_sessions'), {
           user_id: user.uid,
@@ -160,9 +191,30 @@ export default function Quiz() {
           total_questions: questions.length,
           subject: selectedSubject.name,
           chapter: selectedChapter.name,
+          mode: quizMode,
+          points: pointsEarned,
           date: today,
           created_at: serverTimestamp()
         });
+
+        // Update user profile points and level
+        const profileRef = doc(db, 'profiles', user.uid);
+        const profileSnap = await getDoc(profileRef);
+        if (profileSnap.exists()) {
+          const currentPoints = profileSnap.data().points || 0;
+          const newPoints = currentPoints + pointsEarned;
+          
+          let newLevel = 'مبتدئ';
+          if (newPoints >= 1000) newLevel = 'بطل';
+          else if (newPoints >= 500) newLevel = 'خبير';
+          else if (newPoints >= 200) newLevel = 'متقدم';
+
+          await updateDoc(profileRef, {
+            points: Math.round(newPoints),
+            level: newLevel
+          });
+        }
+
       } catch (e) {
         console.error("Error saving quiz result:", e);
       }
@@ -198,6 +250,12 @@ export default function Quiz() {
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   const currentQuestion = questions[currentQuestionIndex];
   const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
@@ -217,8 +275,9 @@ export default function Quiz() {
             <button 
               onClick={() => {
                 if (view === 'chapters') setView('subjects');
+                else if (view === 'mode') setView('chapters');
                 else if (view === 'quiz') {
-                  if (window.confirm('هل تريد حقاً الخروج من الاختبار؟')) setView('chapters');
+                  if (window.confirm('هل تريد حقاً الخروج من الاختبار؟')) setView('mode');
                 }
                 else if (view === 'result') setView('subjects');
               }}
@@ -291,8 +350,7 @@ export default function Quiz() {
               {(BAC_CHAPTERS[selectedSubject.id] || []).map((c) => (
                 <button 
                   key={c.id} 
-                  onClick={() => generateQuiz(c)} 
-                  disabled={loading}
+                  onClick={() => { setSelectedChapter(c); setView('mode'); }} 
                   className="w-full bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] shadow-sm flex items-center justify-between hover:border-indigo-200 dark:hover:border-indigo-900 border border-transparent transition-all active:scale-[0.98] group"
                 >
                   <div className="text-right flex-1">
@@ -309,7 +367,7 @@ export default function Quiz() {
                     <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{c.description}</p>
                   </div>
                   <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                    {loading && selectedChapter?.id === c.id ? <Loader2 className="animate-spin" size={20} /> : <ChevronLeft size={20} />}
+                    <ChevronLeft size={20} />
                   </div>
                 </button>
               ))}
@@ -322,6 +380,71 @@ export default function Quiz() {
             </motion.div>
           )}
 
+          {view === 'mode' && (
+            <motion.div 
+              key="mode"
+              initial={{ opacity: 0, x: 20 }} 
+              animate={{ opacity: 1, x: 0 }} 
+              exit={{ opacity: 0, x: -20 }} 
+              className="space-y-4"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">اختر وضع الاختبار</h2>
+                <p className="text-slate-500 dark:text-slate-400">اختر الطريقة التي تفضلها لاختبار معلوماتك في {selectedChapter?.name}</p>
+              </div>
+
+              <div className="grid gap-4">
+                <button 
+                  onClick={() => generateQuiz('practice')}
+                  disabled={loading}
+                  className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-indigo-500 transition-all text-right group"
+                >
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center">
+                      <Brain size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-lg text-slate-900 dark:text-white">تدريب حر</h3>
+                      <p className="text-sm text-slate-500">بدون وقت، تعرف على الإجابة الصحيحة فوراً</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => generateQuiz('exam')}
+                  disabled={loading}
+                  className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-purple-500 transition-all text-right group"
+                >
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center">
+                      <FileText size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-lg text-slate-900 dark:text-white">امتحان تجريبي</h3>
+                      <p className="text-sm text-slate-500">10 أسئلة في 15 دقيقة، النتيجة في النهاية</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => generateQuiz('challenge')}
+                  disabled={loading}
+                  className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-orange-500 transition-all text-right group"
+                >
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center">
+                      <Zap size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-lg text-slate-900 dark:text-white">تحدي السرعة</h3>
+                      <p className="text-sm text-slate-500">10 أسئلة في 5 دقائق، ضاعف نقاطك!</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {view === 'quiz' && questions.length > 0 && (
             <motion.div 
               key="quiz"
@@ -330,18 +453,26 @@ export default function Quiz() {
               className="space-y-6"
             >
               {/* Progress Bar */}
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm">
-                <div className="flex justify-between items-center mb-2 text-xs font-bold text-slate-500">
-                  <span>السؤال {currentQuestionIndex + 1} من {questions.length}</span>
-                  <span className="text-indigo-600">{Math.round(progress)}%</span>
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-2 text-xs font-bold text-slate-500">
+                    <span>السؤال {currentQuestionIndex + 1} من {questions.length}</span>
+                    <span className="text-indigo-600">{Math.round(progress)}%</span>
+                  </div>
+                  <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      className="h-full bg-indigo-600 rounded-full"
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    className="h-full bg-indigo-600 rounded-full"
-                  />
-                </div>
+                {timeLeft !== null && (
+                  <div className="ml-4 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-xl font-bold">
+                    <Timer size={18} />
+                    <span className="font-mono">{formatTime(timeLeft)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800">
@@ -354,27 +485,28 @@ export default function Quiz() {
                     const isSelected = userAnswers[currentQuestionIndex] === opt;
                     const isCorrect = opt === currentQuestion.correctAnswer;
                     const hasAnswered = userAnswers[currentQuestionIndex] !== undefined;
+                    
+                    const showCorrectness = quizMode === 'practice' && hasAnswered;
 
                     return (
                       <button 
                         key={idx} 
                         onClick={() => handleAnswer(opt)} 
-                        disabled={hasAnswered}
                         className={`p-5 rounded-2xl font-bold text-right border-2 transition-all flex items-center justify-between group active:scale-[0.98] ${
                           isSelected 
-                            ? (isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400')
-                            : (hasAnswered && isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400')
+                            ? (showCorrectness ? (isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400') : 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400')
+                            : (showCorrectness && isCorrect ? 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400')
                         }`}
                       >
                         <span className="flex-1">{opt}</span>
-                        {hasAnswered && isCorrect && <CheckCircle2 size={20} className="shrink-0 ml-2" />}
-                        {hasAnswered && isSelected && !isCorrect && <XCircle size={20} className="shrink-0 ml-2" />}
+                        {showCorrectness && isCorrect && <CheckCircle2 size={20} className="shrink-0 ml-2" />}
+                        {showCorrectness && isSelected && !isCorrect && <XCircle size={20} className="shrink-0 ml-2" />}
                       </button>
                     );
                   })}
                 </div>
 
-                {userAnswers[currentQuestionIndex] !== undefined && (
+                {quizMode === 'practice' && userAnswers[currentQuestionIndex] !== undefined && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }} 
                     animate={{ opacity: 1, y: 0 }} 
@@ -400,7 +532,7 @@ export default function Quiz() {
                   </button>
                   {currentQuestionIndex === questions.length - 1 ? (
                     <button 
-                      disabled={userAnswers[currentQuestionIndex] === undefined}
+                      disabled={quizMode === 'practice' && userAnswers[currentQuestionIndex] === undefined}
                       onClick={finishQuiz} 
                       className="flex-[2] py-4 rounded-2xl font-bold bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50 transition-all active:scale-95"
                     >
@@ -408,7 +540,7 @@ export default function Quiz() {
                     </button>
                   ) : (
                     <button 
-                      disabled={userAnswers[currentQuestionIndex] === undefined}
+                      disabled={quizMode === 'practice' && userAnswers[currentQuestionIndex] === undefined}
                       onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)} 
                       className="flex-[2] py-4 rounded-2xl font-bold bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50 transition-all active:scale-95"
                     >

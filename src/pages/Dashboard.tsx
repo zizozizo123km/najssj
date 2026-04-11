@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Filter, Plus, Sparkles, TrendingUp, BookOpen, Video, FileText, AlertTriangle, X } from 'lucide-react';
-import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where } from '../lib/firebase';
+import { Search, Filter, Plus, Sparkles, TrendingUp, BookOpen, Video, FileText, AlertTriangle, X, Trophy, Medal } from 'lucide-react';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit } from '../lib/firebase';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
@@ -14,7 +14,8 @@ export default function Dashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
-  const [stats, setStats] = useState({ summaries: 0, videos: 0, successRate: 0 });
+  const [stats, setStats] = useState({ summaries: 0, videos: 0, successRate: 0, points: 0, level: 'مبتدئ' });
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -43,6 +44,19 @@ export default function Dashboard() {
       setLoading(false);
     });
 
+    // Fetch Leaderboard
+    const fetchLeaderboard = async () => {
+      try {
+        const lbQuery = query(collection(db, 'profiles'), orderBy('points', 'desc'), limit(5));
+        const lbSnapshot = await getDocs(lbQuery);
+        const lbData = lbSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLeaderboard(lbData);
+      } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+      }
+    };
+    fetchLeaderboard();
+
     return () => {
       unsubscribeAuth();
       unsubscribePosts();
@@ -69,7 +83,17 @@ export default function Dashboard() {
       });
       const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
 
-      setStats({ summaries: summariesCount, videos: videosCount, successRate });
+      // Fetch profile points
+      const profileDoc = await getDocs(query(collection(db, 'profiles'), where('__name__', '==', userId)));
+      let points = 0;
+      let level = 'مبتدئ';
+      if (!profileDoc.empty) {
+        const pData = profileDoc.docs[0].data();
+        points = pData.points || 0;
+        level = pData.level || 'مبتدئ';
+      }
+
+      setStats({ summaries: summariesCount, videos: videosCount, successRate, points, level });
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
@@ -129,16 +153,20 @@ export default function Dashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-white/10">
+            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/10">
               <div className="text-center">
-                <p className="text-lg font-black">{stats.summaries}</p>
-                <p className="text-[10px] text-blue-100 font-bold">ملخصات</p>
+                <p className="text-lg font-black">{stats.points}</p>
+                <p className="text-[10px] text-blue-100 font-bold">نقاط XP</p>
               </div>
-              <div className="text-center border-x border-white/10">
+              <div className="text-center border-r border-white/10">
+                <p className="text-lg font-black text-yellow-300">{stats.level}</p>
+                <p className="text-[10px] text-blue-100 font-bold">المستوى</p>
+              </div>
+              <div className="text-center border-r border-white/10">
                 <p className="text-lg font-black">{stats.videos}</p>
                 <p className="text-[10px] text-blue-100 font-bold">فيديوهات</p>
               </div>
-              <div className="text-center">
+              <div className="text-center border-r border-white/10">
                 <p className="text-lg font-black">{stats.successRate}%</p>
                 <p className="text-[10px] text-blue-100 font-bold">نجاح</p>
               </div>
@@ -146,6 +174,48 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* Leaderboard Preview */}
+      {leaderboard.length > 0 && (
+        <div className="px-2">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Trophy size={18} className="text-yellow-500" />
+                لوحة الشرف (أفضل 5)
+              </h3>
+            </div>
+            <div className="space-y-3">
+              {leaderboard.map((user, index) => (
+                <div key={user.id} className={`flex items-center justify-between p-2 rounded-xl ${user.id === currentUserId ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-bold text-gray-500 dark:text-gray-400">
+                      {index === 0 ? <Medal size={16} className="text-yellow-500" /> : index === 1 ? <Medal size={16} className="text-gray-400" /> : index === 2 ? <Medal size={16} className="text-amber-600" /> : index + 1}
+                    </div>
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-bold">
+                          {user.full_name?.charAt(0) || '?'}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{user.full_name || 'مستخدم'}</p>
+                      <p className="text-[10px] text-gray-500">{user.level || 'مبتدئ'}</p>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-black text-blue-600 dark:text-blue-400">{user.points || 0}</p>
+                    <p className="text-[10px] text-gray-500">XP</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-2 overflow-x-auto px-2 pb-2 no-scrollbar">

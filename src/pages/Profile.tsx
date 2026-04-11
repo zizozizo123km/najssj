@@ -30,6 +30,9 @@ interface UserProfile {
   avatarId?: string | null;
   branch: string;
   favoriteSubjects: string[];
+  points: number;
+  level: string;
+  targetScore: number;
   stats: {
     savedSummaries: number;
     analyzedVideos: number;
@@ -102,6 +105,9 @@ export default function Profile() {
           avatarId: data.avatar_id || null,
           branch: data.branch || 'sciences',
           favoriteSubjects: data.favorite_subjects || ['الرياضيات', 'الفيزياء'],
+          points: data.points || 0,
+          level: data.level || 'مبتدئ',
+          targetScore: data.target_score || 15,
           stats: {
             savedSummaries: summariesSnap.size,
             analyzedVideos: videosSnap.size,
@@ -119,6 +125,9 @@ export default function Profile() {
           avatarId: null,
           branch: 'sciences',
           favoriteSubjects: ['الرياضيات', 'الفيزياء'],
+          points: 0,
+          level: 'مبتدئ',
+          targetScore: 15,
           stats: {
             savedSummaries: 0,
             analyzedVideos: 0,
@@ -152,6 +161,7 @@ export default function Profile() {
           avatar_id: newData.avatarId || null,
           branch: newData.branch,
           favorite_subjects: newData.favoriteSubjects,
+          target_score: newData.targetScore || user.targetScore,
           updated_at: serverTimestamp()
         });
 
@@ -245,11 +255,13 @@ export default function Profile() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ProgressCard label="الاختبارات المكتملة" current={user.stats.completedQuizzes} total={50} icon={HelpCircle} color="bg-orange-500" delay={0.1} />
-              <ProgressCard label="الفيديوهات المحللة" current={user.stats.analyzedVideos} total={50} icon={Video} color="bg-red-500" delay={0.2} />
+              <ProgressCard label="نقاط الخبرة (XP)" current={user.points} total={user.points < 200 ? 200 : user.points < 500 ? 500 : 1000} icon={Zap} color="bg-yellow-500" delay={0.2} />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatsCard label="ملخصات محفوظة" value={user.stats.savedSummaries} icon={Bookmark} color="bg-blue-500" delay={0.3} />
+              <StatsCard label="المستوى الحالي" value={user.level} icon={Award} color="bg-purple-500" delay={0.3} />
               <StatsCard label="نسبة النجاح" value={`${user.stats.successRate}%`} icon={TrendingUp} color="bg-green-500" delay={0.4} />
+              <StatsCard label="الهدف (البكالوريا)" value={`${user.targetScore}/20`} icon={Target} color="bg-red-500" delay={0.5} />
+              <StatsCard label="ملخصات محفوظة" value={user.stats.savedSummaries} icon={Bookmark} color="bg-blue-500" delay={0.6} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -283,19 +295,19 @@ export default function Profile() {
                     أوسمة الإنجاز
                   </h3>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="flex flex-col items-center gap-2 group">
+                    <div className={`flex flex-col items-center gap-2 group ${user.stats.completedQuizzes >= 5 ? '' : 'opacity-40 grayscale'}`}>
                       <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-inner group-hover:scale-110 transition-transform">
                         <Zap size={24} />
                       </div>
                       <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">سريع التعلم</span>
                     </div>
-                    <div className="flex flex-col items-center gap-2 group">
+                    <div className={`flex flex-col items-center gap-2 group ${user.stats.successRate >= 80 ? '' : 'opacity-40 grayscale'}`}>
                       <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-inner group-hover:scale-110 transition-transform">
                         <Target size={24} />
                       </div>
                       <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">قناص الأهداف</span>
                     </div>
-                    <div className="flex flex-col items-center gap-2 group opacity-40 grayscale">
+                    <div className={`flex flex-col items-center gap-2 group ${user.level === 'خبير' || user.level === 'بطل' ? '' : 'opacity-40 grayscale'}`}>
                       <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 shadow-inner group-hover:scale-110 transition-transform">
                         <ShieldCheck size={24} />
                       </div>
@@ -308,15 +320,15 @@ export default function Profile() {
                 <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 shadow-xl text-white space-y-4 relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
                   <div className="relative space-y-2">
-                    <h4 className="font-bold text-lg">أنت تقترب من هدفك!</h4>
+                    <h4 className="font-bold text-lg">الهدف: {user.targetScore}/20</h4>
                     <p className="text-xs text-blue-100 leading-relaxed">
-                      لقد أكملت 85% من أهداف المراجعة لهذا الأسبوع. استمر في هذا النشاط، البكالوريا في جيبك!
+                      نسبة نجاحك الحالية هي {user.stats.successRate}%. {user.stats.successRate >= (user.targetScore * 5) ? 'أنت في الطريق الصحيح لتحقيق هدفك! استمر يا بطل.' : 'تحتاج إلى المزيد من التدريب للوصول إلى هدفك. لا تستسلم!'}
                     </p>
                   </div>
                   <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: '85%' }}
+                      animate={{ width: `${user.stats.successRate}%` }}
                       className="h-full bg-white"
                     />
                   </div>
@@ -324,7 +336,7 @@ export default function Profile() {
                     onClick={handleRandomQuiz}
                     className="w-full bg-white text-blue-600 py-3 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all active:scale-95"
                   >
-                    ابدأ مراجعة جديدة
+                    ابدأ تحدي جديد
                   </button>
                 </div>
               </div>
