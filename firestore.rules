@@ -210,6 +210,13 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.sender_id || isAdmin());
     }
 
+    match /books/{bookId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.keys().hasAll(['title', 'pdfUrl', 'createdAt']);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /admin_settings/general {
       allow read: if true;
       allow write: if isAdmin();

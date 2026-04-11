@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Book as BookIcon, Filter, LayoutGrid, List, Search } from 'lucide-react';
-import { books } from '../data/books';
+import { Book as BookIcon, Filter, LayoutGrid, List, Search, Plus } from 'lucide-react';
+import { books as initialBooks } from '../data/books';
 import { Book } from '../types/library';
 import BookGrid from '../components/library/BookGrid';
 import BookCard from '../components/library/BookCard';
@@ -9,12 +9,38 @@ import SubjectSelector from '../components/library/SubjectSelector';
 import SearchBar from '../components/library/SearchBar';
 import PDFViewer from '../components/library/PDFViewer';
 import FavoritesSection from '../components/library/FavoritesSection';
+import AddBookModal from '../components/library/AddBookModal';
+import { db, collection, onSnapshot, query, orderBy } from '../lib/firebase';
 
 export default function Library() {
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [firebaseBooks, setFirebaseBooks] = useState<Book[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'books'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedBooks = snapshot.docs.map(doc => ({
+        id: doc.id as any, // Using string ID from Firestore, casting to any to fit Book interface which expects number
+        title: doc.data().title,
+        subject: doc.data().subject,
+        branch: doc.data().branch,
+        cover: doc.data().cover,
+        pdfUrl: doc.data().pdfUrl,
+        author: doc.data().author
+      }));
+      setFirebaseBooks(fetchedBooks);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const allBooks = useMemo(() => {
+    return [...firebaseBooks, ...initialBooks];
+  }, [firebaseBooks]);
 
   const subjectList = [
     { id: 'sciences', name: 'علوم تجريبية' },
@@ -26,18 +52,18 @@ export default function Library() {
   ];
 
   const favoriteBooks = useMemo(() => {
-    return books.filter((book) => favorites.includes(book.id));
-  }, [favorites]);
+    return allBooks.filter((book) => favorites.includes(book.id));
+  }, [favorites, allBooks]);
 
   const filteredBooks = useMemo(() => {
-    return books.filter((book) => {
+    return allBooks.filter((book) => {
       const matchesSubject = selectedSubject === 'all' || book.branch === selectedSubject;
       const matchesSearch = 
         book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         book.subject.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesSubject && matchesSearch;
     });
-  }, [selectedSubject, searchQuery]);
+  }, [selectedSubject, searchQuery, allBooks]);
 
   const toggleFavorite = (id: number) => {
     setFavorites((prev) => 
@@ -71,11 +97,20 @@ export default function Library() {
               </p>
             </div>
 
-            <SearchBar 
-              value={searchQuery} 
-              onChange={setSearchQuery} 
-              className="w-full md:max-w-md"
-            />
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <SearchBar 
+                value={searchQuery} 
+                onChange={setSearchQuery} 
+                className="flex-1 md:w-80"
+              />
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold transition-colors shrink-0"
+              >
+                <Plus size={20} />
+                <span className="hidden md:inline">إضافة كتاب</span>
+              </button>
+            </div>
           </div>
 
           <SubjectSelector 
@@ -98,7 +133,7 @@ export default function Library() {
             // Netflix Style Rows for "All" view
             <div className="space-y-8">
               {subjectList.map((subject) => {
-                const subjectBooks = books.filter(b => b.branch === subject.id);
+                const subjectBooks = allBooks.filter(b => b.branch === subject.id);
                 if (subjectBooks.length === 0) return null;
                 return (
                   <div key={subject.id} className="space-y-4">
@@ -158,6 +193,11 @@ export default function Library() {
           />
         )}
       </AnimatePresence>
+
+      <AddBookModal 
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+      />
 
       {/* Mobile Navigation Spacer */}
       <div className="h-16 md:hidden" />
