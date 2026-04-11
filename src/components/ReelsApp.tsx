@@ -20,6 +20,7 @@ export default function ReelsApp() {
   const [isMuted, setIsMuted] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
@@ -33,11 +34,15 @@ export default function ReelsApp() {
       setVideos(cache.current[q].items);
       setNextPageToken(cache.current[q].token);
       if (cache.current[q].items.length > 0) setActiveVideoId(cache.current[q].items[0].id.videoId);
+      setError(null);
       return;
     }
 
     if (isLoadMore) setLoadingMore(true);
-    else setLoading(true);
+    else {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const tokenParam = isLoadMore && nextPageToken ? `&pageToken=${nextPageToken}` : '';
@@ -46,6 +51,10 @@ export default function ReelsApp() {
       );
       const data = await response.json();
       
+      if (data.error) {
+        throw new Error(data.error.message || "حدث خطأ في YouTube API");
+      }
+
       if (data.items) {
         if (isLoadMore) {
           setVideos(prev => {
@@ -59,9 +68,12 @@ export default function ReelsApp() {
           if (data.items.length > 0) setActiveVideoId(data.items[0].id.videoId);
         }
         setNextPageToken(data.nextPageToken || null);
-      } else throw new Error("API Limit or Error");
-    } catch (error) {
-      console.error(error);
+      } else {
+        if (!isLoadMore) setError("لم يتم العثور على فيديوهات.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (!isLoadMore) setError(err.message || "فشل الاتصال بالخادم.");
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -149,6 +161,19 @@ export default function ReelsApp() {
             <div className="h-full flex flex-col items-center justify-center gap-4 text-white">
               <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
               <p className="text-[10px] font-bold tracking-widest opacity-50 uppercase">جاري التحميل</p>
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center gap-4 text-white p-10 text-center">
+              <div className="p-4 bg-red-500/20 rounded-2xl border border-red-500/50">
+                <p className="text-sm font-bold text-red-400 mb-2">حدث خطأ</p>
+                <p className="text-xs opacity-70">{error}</p>
+              </div>
+              <button 
+                onClick={() => fetchVideos(query)}
+                className="bg-white text-black px-6 py-2 rounded-full text-xs font-bold"
+              >
+                إعادة المحاولة
+              </button>
             </div>
           ) : (
             videos.map((item) => (
