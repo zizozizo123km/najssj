@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import Library from './pages/Library';
 import Courses from './pages/Courses';
 import CourseSubject from './pages/CourseSubject';
+import PastExams from './pages/PastExams';
 import VirtualTeacher from './pages/VirtualTeacher';
 import StudyPlanner from './pages/StudyPlanner';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -170,6 +171,7 @@ export default function App() {
                     <Route path="/youtube" element={user ? <YouTubeVideoAnalyzer /> : <Navigate to="/login" />} />
                     <Route path="/planner" element={user ? <StudyPlanner /> : <Navigate to="/login" />} />
                     <Route path="/quiz" element={user ? <Quiz /> : <Navigate to="/login" />} />
+                    <Route path="/past-exams" element={user ? <PastExams /> : <Navigate to="/login" />} />
                     <Route path="/search" element={user ? <div>البحث</div> : <Navigate to="/login" />} />
                   </Routes>
                 </main>
