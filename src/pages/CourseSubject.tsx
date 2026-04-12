@@ -14,8 +14,7 @@ import {
   Database
 } from 'lucide-react';
 import { db, doc, getDoc, setDoc, serverTimestamp } from '../lib/firebase';
-
-const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+import { getApiKey } from '../lib/apiKeys';
 
 // Representative Annual Programs for Algerian Baccalaureate
 const ANNUAL_PROGRAMS: { [key: string]: string[] } = {
@@ -96,11 +95,6 @@ export default function CourseSubject() {
   const topics = subjectName ? (ANNUAL_PROGRAMS[subjectName] || ['دروس عامة']) : [];
 
   const fetchVideos = async (topic: string) => {
-    if (!API_KEY) {
-      setError('YouTube API key is missing.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setIsFromCache(false);
@@ -124,10 +118,16 @@ export default function CourseSubject() {
         }
       }
 
-      // 2. If not in cache or expired, fetch from YouTube
+      // 2. Fetch API Key from the same source as Video Analyzer
+      const apiKey = await getApiKey('youtube', 'api_key');
+      if (!apiKey) {
+        throw new Error('مفتاح YouTube API غير متوفر. يرجى إضافته من لوحة التحكم.');
+      }
+
+      // 3. If not in cache or expired, fetch from YouTube
       const query = encodeURIComponent(`bac ${subjectName} ${topic} شرح درس`);
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${query}&type=video&videoEmbeddable=true&relevanceLanguage=ar&key=${API_KEY}`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${query}&type=video&videoEmbeddable=true&relevanceLanguage=ar&key=${apiKey}`
       );
       const data = await response.json();
 
@@ -138,7 +138,7 @@ export default function CourseSubject() {
       const fetchedVideos = data.items || [];
       setVideos(fetchedVideos);
 
-      // 3. Save to Firestore Cache
+      // 4. Save to Firestore Cache
       if (fetchedVideos.length > 0) {
         await setDoc(cacheRef, {
           videos: fetchedVideos,
