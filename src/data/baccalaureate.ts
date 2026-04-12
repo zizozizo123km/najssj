@@ -55,7 +55,9 @@ export const BAC_SUBJECTS: Record<string, { id: string, name: string, icon: stri
     { id: 'arabic', name: 'اللغة العربية', icon: '📙', color: 'bg-orange-100 text-orange-600' },
     { id: 'french', name: 'اللغة الفرنسية', icon: '🇫🇷', color: 'bg-blue-100 text-blue-600' },
     { id: 'english', name: 'اللغة الإنجليزية', icon: '🇬🇧', color: 'bg-red-100 text-red-600' },
-    { id: 'third_lang', name: 'لغة أجنبية ثالثة', icon: '🇩🇪', color: 'bg-gray-100 text-gray-600' },
+    { id: 'german', name: 'اللغة الألمانية', icon: '🇩🇪', color: 'bg-gray-100 text-gray-700' },
+    { id: 'spanish', name: 'اللغة الإسبانية', icon: '🇪🇸', color: 'bg-yellow-100 text-yellow-600' },
+    { id: 'italian', name: 'اللغة الإيطالية', icon: '🇮🇹', color: 'bg-green-100 text-green-600' },
     { id: 'philosophy', name: 'الفلسفة', icon: '🧠', color: 'bg-yellow-100 text-yellow-600' },
     { id: 'history', name: 'التاريخ والجغرافيا', icon: '📔', color: 'bg-yellow-100 text-yellow-600' },
     { id: 'math', name: 'الرياضيات', icon: '📘', color: 'bg-blue-100 text-blue-600' },
@@ -116,5 +118,20 @@ export const BAC_CHAPTERS: Record<string, { id: string, name: string, descriptio
     { id: 'creed', name: 'العقيدة الإسلامية وأثرها', description: 'أثر العقيدة على الفرد والمجتمع', difficulty: 'easy' },
     { id: 'quran_mind', name: 'موقف القرآن من العقل', description: 'أهمية العقل وحدود استخدامه', difficulty: 'easy' },
     { id: 'health', name: 'الصحة النفسية والجسمية', description: 'كيفية الحفاظ على الصحة في الإسلام', difficulty: 'easy' },
+  ],
+  'german': [
+    { id: 'ger_grammar', name: 'Grammatik (القواعد)', description: 'قواعد اللغة الألمانية الأساسية', difficulty: 'medium' },
+    { id: 'ger_vocab', name: 'Wortschatz (المفردات)', description: 'أهم المفردات والمصطلحات', difficulty: 'easy' },
+    { id: 'ger_comprehension', name: 'Textverständnis (فهم النص)', description: 'تحليل النصوص والأسئلة', difficulty: 'hard' },
+  ],
+  'spanish': [
+    { id: 'spa_grammar', name: 'Gramática (القواعد)', description: 'قواعد اللغة الإسبانية الأساسية', difficulty: 'medium' },
+    { id: 'spa_vocab', name: 'Vocabulario (المفردات)', description: 'أهم المفردات والمصطلحات', difficulty: 'easy' },
+    { id: 'spa_comprehension', name: 'Comprensión (فهم النص)', description: 'تحليل النصوص والأسئلة', difficulty: 'hard' },
+  ],
+  'italian': [
+    { id: 'ita_grammar', name: 'Grammatica (القواعد)', description: 'قواعد اللغة الإيطالية الأساسية', difficulty: 'medium' },
+    { id: 'ita_vocab', name: 'Vocabolario (المفردات)', description: 'أهم المفردات والمصطلحات', difficulty: 'easy' },
+    { id: 'ita_comprehension', name: 'Comprensione (فهم النص)', description: 'تحليل النصوص والأسئلة', difficulty: 'hard' },
   ],
 };
