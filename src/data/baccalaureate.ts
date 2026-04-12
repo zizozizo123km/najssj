@@ -134,4 +134,46 @@ export const BAC_CHAPTERS: Record<string, { id: string, name: string, descriptio
     { id: 'ita_vocab', name: 'Vocabolario (المفردات)', description: 'أهم المفردات والمصطلحات', difficulty: 'easy' },
     { id: 'ita_comprehension', name: 'Comprensione (فهم النص)', description: 'تحليل النصوص والأسئلة', difficulty: 'hard' },
   ],
+  'arabic': [
+    { id: 'literature', name: 'الأدب العربي', description: 'دراسة النصوص الأدبية والعصور', difficulty: 'medium' },
+    { id: 'grammar', name: 'القواعد والنحو', description: 'الإعراب والقواعد النحوية والصرفية', difficulty: 'hard' },
+    { id: 'rhetoric', name: 'البلاغة', description: 'الصور البيانية والمحسنات البديعية', difficulty: 'medium' },
+    { id: 'criticism', name: 'التقويم النقدي', description: 'تحليل ونقد النصوص الأدبية', difficulty: 'hard' },
+  ],
+  'french': [
+    { id: 'text_historique', name: 'Le texte historique', description: 'Analyse des textes liés à l\'histoire', difficulty: 'medium' },
+    { id: 'argumentatif', name: 'Le texte argumentatif', description: 'L\'art de convaincre et de persuader', difficulty: 'hard' },
+    { id: 'appel', name: 'L\'appel', description: 'Comprendre et rédiger un appel', difficulty: 'medium' },
+  ],
+  'english': [
+    { id: 'ethics', name: 'Ethics in Business', description: 'Corruption, fraud, and ethical behavior', difficulty: 'medium' },
+    { id: 'safety', name: 'Safety First', description: 'Food safety and advertising', difficulty: 'easy' },
+    { id: 'education', name: 'Education in the World', description: 'Educational systems and challenges', difficulty: 'medium' },
+    { id: 'astronomy', name: 'Astronomy and Solar System', description: 'Space exploration and celestial bodies', difficulty: 'hard' },
+  ],
+  'tech': [
+    { id: 'mechanical', name: 'الهندسة الميكانيكية', description: 'دراسة الأنظمة الميكانيكية والآليات', difficulty: 'hard' },
+    { id: 'civil', name: 'الهندسة المدنية', description: 'البناء، المنشآت والمواد', difficulty: 'hard' },
+    { id: 'electrical', name: 'الهندسة الكهربائية', description: 'الدارات والأنظمة الإلكترونية', difficulty: 'hard' },
+  ],
+  'economy': [
+    { id: 'market', name: 'السوق والأسعار', description: 'العرض والطلب وتوازن السوق', difficulty: 'medium' },
+    { id: 'money', name: 'النظام المصرفي', description: 'البنوك، النقود والسياسة النقدية', difficulty: 'medium' },
+    { id: 'trade', name: 'التجارة الخارجية', description: 'التبادل الدولي وميزان المدفوعات', difficulty: 'hard' },
+  ],
+  'accounting': [
+    { id: 'end_year', name: 'أعمال نهاية السنة', description: 'الاهتلاكات، المؤونات وتسوية الحسابات', difficulty: 'hard' },
+    { id: 'functional_budget', name: 'الميزانية الوظيفية', description: 'تحليل الوضعية المالية للمؤسسة', difficulty: 'hard' },
+    { id: 'cost_analysis', name: 'تحليل الاستغلال', description: 'حساب النتائج وتحليل العتبة', difficulty: 'medium' },
+  ],
+  'law': [
+    { id: 'sale_contract', name: 'عقد البيع', description: 'أركان العقد وآثاره القانونية', difficulty: 'medium' },
+    { id: 'companies', name: 'الشركات التجارية', description: 'شركة المساهمة والشركة ذات المسؤولية المحدودة', difficulty: 'hard' },
+    { id: 'labor_relations', name: 'علاقات العمل', description: 'عقد العمل، الأجر والنزاعات', difficulty: 'medium' },
+  ],
+  'arts': [
+    { id: 'art_history', name: 'تاريخ الفن', description: 'تطور الفنون عبر العصور', difficulty: 'medium' },
+    { id: 'art_criticism', name: 'النقد الفني', description: 'أسس تحليل وتقييم الأعمال الفنية', difficulty: 'hard' },
+    { id: 'art_practice', name: 'الممارسة الفنية', description: 'التقنيات والأساليب الفنية', difficulty: 'medium' },
+  ],
 };
