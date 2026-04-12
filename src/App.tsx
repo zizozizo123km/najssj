@@ -12,13 +12,14 @@ import StudyGroups from './pages/StudyGroups';
 import ChatRoom from './pages/ChatRoom';
 import Profile from './pages/Profile';
 import Library from './pages/Library';
+import Courses from './pages/Courses';
+import CourseSubject from './pages/CourseSubject';
 import VirtualTeacher from './pages/VirtualTeacher';
 import StudyPlanner from './pages/StudyPlanner';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MaintenanceScreen from './components/MaintenanceScreen';
 import BroadcastNotification from './components/BroadcastNotification';
-import ReelsApp from './components/ReelsApp';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -162,12 +163,13 @@ export default function App() {
                     <Route path="/groups/:groupId" element={user ? <ChatRoom /> : <Navigate to="/login" />} />
                     <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
                     <Route path="/library" element={user ? <Library /> : <Navigate to="/login" />} />
+                    <Route path="/courses" element={user ? <Courses /> : <Navigate to="/login" />} />
+                    <Route path="/courses/:subjectName" element={user ? <CourseSubject /> : <Navigate to="/login" />} />
                     <Route path="/ai" element={user ? <VirtualTeacher /> : <Navigate to="/login" />} />
                     <Route path="/posts" element={user ? <Posts /> : <Navigate to="/login" />} />
                     <Route path="/youtube" element={user ? <YouTubeVideoAnalyzer /> : <Navigate to="/login" />} />
                     <Route path="/planner" element={user ? <StudyPlanner /> : <Navigate to="/login" />} />
                     <Route path="/quiz" element={user ? <Quiz /> : <Navigate to="/login" />} />
-                    <Route path="/reels" element={user ? <ReelsApp /> : <Navigate to="/login" />} />
                     <Route path="/search" element={user ? <div>البحث</div> : <Navigate to="/login" />} />
                   </Routes>
                 </main>

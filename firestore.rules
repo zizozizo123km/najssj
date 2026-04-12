@@ -238,6 +238,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /video_cache/{cacheId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && 
+                             hasRequiredFields(['videos', 'updated_at', 'subject', 'topic']) &&
+                             request.resource.data.videos is list &&
+                             request.resource.data.updated_at is timestamp;
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;

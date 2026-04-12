@@ -82,6 +82,18 @@
       "properties": {
         "settings": { "type": "object", "description": "API keys settings" }
       }
+    },
+    "VideoCache": {
+      "title": "Video Cache",
+      "description": "Caches YouTube video results to save API quota",
+      "type": "object",
+      "properties": {
+        "videos": { "type": "array", "description": "List of cached video objects" },
+        "updated_at": { "type": "string", "format": "date-time", "description": "Last update timestamp" },
+        "subject": { "type": "string", "description": "Subject name" },
+        "topic": { "type": "string", "description": "Topic name" }
+      },
+      "required": ["videos", "updated_at", "subject", "topic"]
     }
   },
   "firestore": {
@@ -116,6 +128,10 @@
     "/notifications/{notificationId}": {
       "schema": "Notification",
       "description": "System notifications"
+    },
+    "/video_cache/{cacheId}": {
+      "schema": "VideoCache",
+      "description": "Cached YouTube search results"
     }
   }
 }
