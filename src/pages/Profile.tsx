@@ -254,8 +254,8 @@ export default function Profile() {
             <ProfileHeader user={user} onEdit={() => setIsEditing(true)} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ProgressCard label="الاختبارات المكتملة" current={user.stats.completedQuizzes} total={50} icon={HelpCircle} color="bg-orange-500" delay={0.1} />
-              <ProgressCard label="نقاط الخبرة (XP)" current={user.points} total={user.points < 200 ? 200 : user.points < 500 ? 500 : 1000} icon={Zap} color="bg-yellow-500" delay={0.2} />
+              <ProgressCard label="الاختبارات المكتملة" current={user.stats.completedQuizzes} total={100} icon={HelpCircle} color="bg-orange-500" delay={0.1} />
+              <ProgressCard label="نقاط الخبرة (XP)" current={user.points} total={user.points < 2000 ? 2000 : user.points < 5000 ? 5000 : 10000} icon={Zap} color="bg-yellow-500" delay={0.2} />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatsCard label="المستوى الحالي" value={user.level} icon={Award} color="bg-purple-500" delay={0.3} />

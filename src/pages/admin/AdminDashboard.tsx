@@ -4,7 +4,7 @@ import { auth, db, collection, query, where, onSnapshot, doc, getDoc, getCountFr
 import { LogOut, LayoutDashboard, Users, Settings, Bell } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
 import StudentTable from '../../components/admin/StudentTable';
-import NotificationForm from '../../components/admin/NotificationForm';
+import NotificationSender from '../../components/admin/NotificationSender';
 import ApiKeysForm from '../../components/admin/ApiKeysForm';
 import MaintenanceToggle from '../../components/admin/MaintenanceToggle';
 import BookUploadForm from '../../components/admin/BookUploadForm';
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'notifications' && (
           <div className="space-y-6 max-w-2xl">
-            <NotificationForm />
+            <NotificationSender />
           </div>
         )}
 

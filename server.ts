@@ -116,6 +116,25 @@ async function startServer() {
     }
   });
 
+  // Send Notification API
+  app.post("/api/send-notification", async (req, res) => {
+    const { title, body, token } = req.body;
+    if (!title || !body || !token) {
+      return res.status(400).json({ error: "Title, body, and token are required" });
+    }
+    try {
+      const message = {
+        notification: { title, body },
+        token: token,
+      };
+      const response = await admin.messaging().send(message);
+      res.status(200).json({ success: true, messageId: response });
+    } catch (error) {
+      console.error("Failed to send notification:", error);
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

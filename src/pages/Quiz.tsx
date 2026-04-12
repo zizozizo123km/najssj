@@ -205,9 +205,9 @@ export default function Quiz() {
           const newPoints = currentPoints + pointsEarned;
           
           let newLevel = 'مبتدئ';
-          if (newPoints >= 1000) newLevel = 'بطل';
-          else if (newPoints >= 500) newLevel = 'خبير';
-          else if (newPoints >= 200) newLevel = 'متقدم';
+          if (newPoints >= 10000) newLevel = 'بطل';
+          else if (newPoints >= 5000) newLevel = 'خبير';
+          else if (newPoints >= 2000) newLevel = 'متقدم';
 
           await updateDoc(profileRef, {
             points: Math.round(newPoints),
