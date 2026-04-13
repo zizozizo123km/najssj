@@ -17,10 +17,12 @@ import CourseSubject from './pages/CourseSubject';
 import PastExams from './pages/PastExams';
 import VirtualTeacher from './pages/VirtualTeacher';
 import StudyPlanner from './pages/StudyPlanner';
+import Notifications from './pages/Notifications';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MaintenanceScreen from './components/MaintenanceScreen';
 import BroadcastNotification from './components/BroadcastNotification';
+import NotificationListener from './components/NotificationListener';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -131,6 +133,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <NotificationListener />
       <BroadcastNotification />
       <Router>
         <Routes>
@@ -172,6 +175,7 @@ export default function App() {
                     <Route path="/planner" element={user ? <StudyPlanner /> : <Navigate to="/login" />} />
                     <Route path="/quiz" element={user ? <Quiz /> : <Navigate to="/login" />} />
                     <Route path="/past-exams" element={user ? <PastExams /> : <Navigate to="/login" />} />
+                    <Route path="/notifications" element={user ? <Notifications /> : <Navigate to="/login" />} />
                     <Route path="/search" element={user ? <div>البحث</div> : <Navigate to="/login" />} />
                   </Routes>
                 </main>
