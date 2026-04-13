@@ -103,7 +103,8 @@ export default function ChatRoom() {
         fileName: doc.data().file_name,
         youtubeId: doc.data().youtube_id,
         createdAt: doc.data().created_at,
-        isPinned: doc.data().is_pinned || false
+        isPinned: doc.data().is_pinned || false,
+        reactions: doc.data().reactions || {}
       } as Message));
       setMessages(messagesData);
       setLoading(false);
@@ -139,13 +140,17 @@ export default function ChatRoom() {
     try {
       const messageData: any = {
         group_id: groupId,
-        text,
+        text: type === 'image' ? '' : text,
         sender_id: user.uid,
         sender_name: userProfile.displayName || 'مستخدم',
         sender_avatar: userProfile.photoURL || '',
         type,
         created_at: serverTimestamp()
       };
+
+      if (type === 'image') {
+        messageData.file_url = text;
+      }
 
       // Handle YouTube ID extraction if type is youtube
       if (type === 'youtube') {

@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Smile, Image as ImageIcon, FileText, Send, Paperclip, Youtube, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, FileText, Send, Paperclip, Youtube, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { uploadFile } from '../services/uploadService';
 
 interface MessageInputProps {
@@ -11,7 +10,6 @@ interface MessageInputProps {
 
 export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled }) => {
   const [text, setText] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,10 +28,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
     }
     
     setText('');
-  };
-
-  const handleEmojiClick = (emojiData: EmojiClickData) => {
-    setText((prev) => prev + emojiData.emoji);
   };
 
   const handleFileClick = () => {
@@ -67,21 +61,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disab
 
   return (
     <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-8 relative">
-      {showEmojiPicker && (
-        <div className="absolute bottom-24 right-4 z-50">
-          <EmojiPicker onEmojiClick={handleEmojiClick} width={250} height={350} />
-        </div>
-      )}
       <form onSubmit={handleSend} className="flex items-end gap-3 max-w-5xl mx-auto">
         <div className="flex items-center gap-1 mb-1">
-          <button
-            type="button"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-2.5 text-slate-500 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-90"
-            title="Emojis"
-          >
-            <Smile className="w-5 h-5" />
-          </button>
           <button
             type="button"
             onClick={handleFileClick}

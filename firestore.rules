@@ -123,7 +123,7 @@ service cloud.firestore {
       return hasRequiredFields(['group_id', 'sender_id', 'sender_name', 'text', 'type', 'created_at']) &&
              data.sender_id == request.auth.uid &&
              data.sender_name is string && data.sender_name.size() > 0 && data.sender_name.size() < 100 &&
-             data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
+             (data.type == 'image' || (data.text is string && data.text.size() > 0 && data.text.size() < 2000)) &&
              data.type in ['text', 'image', 'pdf', 'youtube', 'ai'] &&
              data.created_at is timestamp &&
              (!('reactions' in data) || data.reactions is map);
