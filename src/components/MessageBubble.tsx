@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, ExternalLink, Pin, Trash2, UserMinus, Edit2, Smile, MoreVertical } from 'lucide-react';
 import { cn, formatDate } from '../lib/utils';
-import { auth, db, doc, updateDoc, handleFirestoreError, OperationType, deleteField } from '../lib/firebase';
+import { auth, db, doc, updateDoc, handleFirestoreError, OperationType, deleteField, getDoc } from '../lib/firebase';
 
 import { UserProfile, Message, Group } from '../types';
 import ProfilePreview from './profile/ProfilePreview';
@@ -29,10 +29,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showProfilePreview, setShowProfilePreview] = useState(false);
+  const [senderPhoto, setSenderPhoto] = useState(message.senderPhoto);
   const menuRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isAI = message.type === 'ai';
   const date = message.createdAt?.toDate ? message.createdAt.toDate() : new Date();
+
+  useEffect(() => {
+    const fetchSenderPhoto = async () => {
+      if (message.senderId && message.senderId !== 'ai-assistant') {
+        const profileDoc = await getDoc(doc(db, 'profiles', message.senderId));
+        if (profileDoc.exists()) {
+          const data = profileDoc.data();
+          if (data.avatar_url) {
+            setSenderPhoto(data.avatar_url);
+          }
+        }
+      }
+    };
+    fetchSenderPhoto();
+  }, [message.senderId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -104,7 +120,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}>
         {!isAI && (
           <img
-            src={message.senderPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.senderName}`}
+            src={senderPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.senderName}`}
             alt={message.senderName}
             onClick={() => setShowProfilePreview(true)}
             className={cn(

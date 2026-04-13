@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, BookOpen } from 'lucide-react';
 import { auth, db, doc, setDoc, serverTimestamp } from '../../lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { BAC_BRANCHES } from '../../data/baccalaureate';
 import Loader from './Loader';
 import ErrorMessage from './ErrorMessage';
 
@@ -10,21 +11,12 @@ interface LoginFormProps {
   onSuccess: () => void;
 }
 
-const BRANCHES = [
-  'علوم تجريبية',
-  'رياضيات',
-  'تقني رياضي',
-  'تسيير واقتصاد',
-  'آداب وفلسفة',
-  'لغات أجنبية'
-];
-
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
-  const [branch, setBranch] = useState(BRANCHES[0]);
+  const [branch, setBranch] = useState(BAC_BRANCHES[0].id);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -150,8 +142,8 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               className="w-full p-4 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-right bg-white"
               required
             >
-              {BRANCHES.map((b) => (
-                <option key={b} value={b}>{b}</option>
+              {BAC_BRANCHES.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
           </div>
