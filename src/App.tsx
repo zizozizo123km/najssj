@@ -161,9 +161,8 @@ export default function App() {
               <div className="flex-1 flex flex-col min-w-0 relative">
                 <main className="flex-1 overflow-y-auto scroll-smooth">
                   <Routes>
-                    <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-                    <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
-                    <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
+                    <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+                    <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
                     <Route path="/groups" element={user ? <StudyGroups /> : <Navigate to="/login" />} />
                     <Route path="/groups/:groupId" element={user ? <ChatRoom /> : <Navigate to="/login" />} />
                     <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />

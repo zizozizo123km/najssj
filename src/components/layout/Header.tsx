@@ -28,7 +28,7 @@ export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
         >
           <Menu size={22} className="text-gray-700" />
         </button>
-        <Link to="/dashboard" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-black text-xs">BAC</span>
           </div>
