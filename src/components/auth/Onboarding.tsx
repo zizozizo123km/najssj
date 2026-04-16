@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from 'lucide-react';
-import { auth, db, doc, setDoc, serverTimestamp } from '../lib/firebase';
-import { BAC_BRANCHES } from '../data/baccalaureate';
+import { auth, db, doc, setDoc, serverTimestamp } from '../../lib/firebase';
+import { BAC_BRANCHES } from '../../data/baccalaureate';
 
 interface OnboardingProps {
   onComplete: () => void;

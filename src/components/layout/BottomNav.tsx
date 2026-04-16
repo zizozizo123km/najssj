@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 
 export default function BottomNav() {
   const navItems = [
-    { to: '/', icon: Home, label: 'الرئيسية' },
+    { to: '/dashboard', icon: Home, label: 'الرئيسية' },
     { to: '/groups', icon: MessageSquare, label: 'دردشة' },
     { to: '/library', icon: Library, label: 'المكتبة' },
     { to: '/quiz', icon: HelpCircle, label: 'اختبارات' },
