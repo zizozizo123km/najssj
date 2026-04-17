@@ -17,6 +17,7 @@ import CourseSubject from './pages/CourseSubject';
 import PastExams from './pages/PastExams';
 import VirtualTeacher from './pages/VirtualTeacher';
 import StudyPlanner from './pages/StudyPlanner';
+import BacCalculator from './pages/BacCalculator';
 import Notifications from './pages/Notifications';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -24,6 +25,7 @@ import MaintenanceScreen from './components/MaintenanceScreen';
 import BroadcastNotification from './components/BroadcastNotification';
 import NotificationListener from './components/NotificationListener';
 import NotificationToast from './components/NotificationToast';
+import { NotificationProvider } from './context/NotificationProvider';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -148,11 +150,12 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <NotificationToast notification={activeNotification} onClose={closeNotification} />
-      <NotificationListener onNotification={handleNotification} />
-      <BroadcastNotification />
-      <Router>
-        <Routes>
+      <NotificationProvider>
+        <NotificationToast notification={activeNotification} onClose={closeNotification} />
+        <NotificationListener onNotification={handleNotification} />
+        <BroadcastNotification />
+        <Router>
+          <Routes>
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -189,6 +192,7 @@ export default function App() {
                     <Route path="/posts" element={user ? <Posts /> : <Navigate to="/login" />} />
                     <Route path="/youtube" element={user ? <YouTubeVideoAnalyzer /> : <Navigate to="/login" />} />
                     <Route path="/planner" element={user ? <StudyPlanner /> : <Navigate to="/login" />} />
+                    <Route path="/bac-calc" element={user ? <BacCalculator /> : <Navigate to="/login" />} />
                     <Route path="/quiz" element={user ? <Quiz /> : <Navigate to="/login" />} />
                     <Route path="/past-exams" element={user ? <PastExams /> : <Navigate to="/login" />} />
                     <Route path="/notifications" element={user ? <Notifications /> : <Navigate to="/login" />} />
@@ -202,6 +206,7 @@ export default function App() {
           } />
         </Routes>
       </Router>
-    </ErrorBoundary>
-  );
+    </NotificationProvider>
+  </ErrorBoundary>
+);
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, User, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { auth, onAuthStateChanged } from '../../lib/firebase';
+import NotificationBell from '../NotificationBell';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -43,6 +44,7 @@ export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
         >
           <Search size={22} />
         </button>
+        <NotificationBell />
         <Link 
           to="/profile"
           className="w-9 h-9 rounded-full border-2 border-blue-50 overflow-hidden shadow-sm hover:scale-105 transition-transform"
