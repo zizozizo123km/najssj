@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import { useState, useEffect, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/layout/Header';
 import BottomNav from './components/layout/BottomNav';
@@ -23,6 +23,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import MaintenanceScreen from './components/MaintenanceScreen';
 import BroadcastNotification from './components/BroadcastNotification';
 import NotificationListener from './components/NotificationListener';
+import NotificationToast from './components/NotificationToast';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -82,6 +83,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [activeNotification, setActiveNotification] = useState<{ title: string; body: string } | null>(null);
 
   useEffect(() => {
     // Initialize dark mode
@@ -114,6 +116,19 @@ export default function App() {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
+  const handleNotification = useCallback((n: { title: string; body: string }) => {
+    setActiveNotification(prev => {
+      if (prev && prev.title === n.title && prev.body === n.body) {
+        return prev;
+      }
+      return n;
+    });
+  }, []);
+
+  const closeNotification = useCallback(() => {
+    setActiveNotification(null);
+  }, []);
+
   if (loading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-white space-y-4">
       <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -133,7 +148,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <NotificationListener />
+      <NotificationToast notification={activeNotification} onClose={closeNotification} />
+      <NotificationListener onNotification={handleNotification} />
       <BroadcastNotification />
       <Router>
         <Routes>
