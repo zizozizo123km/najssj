@@ -215,30 +215,27 @@ export default function BacCalculator() {
                   ))}
                 </tbody>
               </table>
+              {/* Results Section */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 mt-4">
+                <div className="flex justify-between items-center">
+                  <div className="text-right">
+                    <p className="text-slate-500 text-xs">المجموع العام</p>
+                    <p className="font-bold text-slate-800 dark:text-white">{calculateResult.totalPoints.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-500 text-xs">مجموع المعاملات</p>
+                    <p className="font-bold text-slate-800 dark:text-white">{calculateResult.totalCoef}</p>
+                  </div>
+                  <div className="bg-indigo-600 text-white px-6 py-2 rounded-2xl text-center">
+                    <p className="text-[10px] opacity-80 uppercase tracking-widest">المعدل</p>
+                    <p className="text-2xl font-black leading-none">{calculateResult.average}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </main>
-
-      {/* Results Bar */}
-      {view === 'calc' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] p-4 max-w-md mx-auto rounded-t-3xl z-20">
-          <div className="flex justify-between items-center mb-4">
-            <div className="text-right">
-              <p className="text-slate-500 text-xs">المجموع العام</p>
-              <p className="font-bold text-slate-800 dark:text-white">{calculateResult.totalPoints.toFixed(2)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-slate-500 text-xs">مجموع المعاملات</p>
-              <p className="font-bold text-slate-800 dark:text-white">{calculateResult.totalCoef}</p>
-            </div>
-            <div className="bg-indigo-600 text-white px-6 py-2 rounded-2xl text-center">
-              <p className="text-[10px] opacity-80 uppercase tracking-widest">المعدل</p>
-              <p className="text-2xl font-black leading-none">{calculateResult.average}</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
