@@ -5,6 +5,7 @@ import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAut
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
+import ProfilePreview from '../components/profile/ProfilePreview';
 
 export default function Dashboard() {
   const [feed, setFeed] = useState<any[]>([]);
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [stats, setStats] = useState({ summaries: 0, videos: 0, successRate: 0, points: 0, level: 'مبتدئ' });
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -187,7 +189,11 @@ export default function Dashboard() {
             </div>
             <div className="space-y-3">
               {leaderboard.map((user, index) => (
-                <div key={user.id} className={`flex items-center justify-between p-2 rounded-xl ${user.id === currentUserId ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : ''}`}>
+                <div 
+                  key={user.id} 
+                  className={`flex items-center justify-between p-2 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${user.id === currentUserId ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : ''}`}
+                  onClick={() => setPreviewUserId(user.id)}
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-bold text-gray-500 dark:text-gray-400">
                       {index === 0 ? <Medal size={16} className="text-yellow-500" /> : index === 1 ? <Medal size={16} className="text-gray-400" /> : index === 2 ? <Medal size={16} className="text-amber-600" /> : index + 1}
@@ -282,6 +288,12 @@ export default function Dashboard() {
         }} 
         onPostCreated={handleCreatePost}
         editPost={editingPost}
+      />
+      
+      <ProfilePreview 
+        userId={previewUserId || ''} 
+        isOpen={!!previewUserId} 
+        onClose={() => setPreviewUserId(null)} 
       />
 
       {/* Delete Confirmation Modal */}

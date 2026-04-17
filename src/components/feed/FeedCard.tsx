@@ -35,6 +35,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  const [authorAvatarUrl, setAuthorAvatarUrl] = useState<string | null>(item.authorAvatar || null);
 
   const handleEmojiClick = (emojiObject: any) => { 
     setNewComment(prev => prev + emojiObject.emoji); 
@@ -45,6 +46,15 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
 
   useEffect(() => {
     if (!item.id) return;
+
+    // Fetch latest avatar from profile
+    if (item.authorId) {
+      getDoc(doc(db, 'profiles', item.authorId)).then(docSnap => {
+        if (docSnap.exists() && docSnap.data().avatar_url) {
+          setAuthorAvatarUrl(docSnap.data().avatar_url);
+        }
+      }).catch(console.error);
+    }
 
     // Subscribe to likes
     const likesQuery = collection(db, 'posts', item.id, 'likes');
@@ -145,7 +155,7 @@ export default function FeedCard({ item, onClick, onDelete, onEdit }: FeedCardPr
             onClick={() => item.authorId && setPreviewUserId(item.authorId)}
           >
             <img 
-              src={item.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.authorName}`} 
+              src={authorAvatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.authorName}`} 
               alt={item.authorName}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
