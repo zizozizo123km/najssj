@@ -5,12 +5,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 // But since this is a static file in public/, we might need to hardcode or use a template
 // I'll use placeholders that the user might need to fill or I can try to extract from the config
 firebase.initializeApp({
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID"
+  apiKey: "AIzaSyDKZ5mVnoggVlqft1P6iwk4GKA-2vATG3U",
+  authDomain: "nacero-8199e.firebaseapp.com",
+  projectId: "nacero-8199e",
+  storageBucket: "nacero-8199e.firebasestorage.app",
+  messagingSenderId: "362369948125",
+  appId: "1:362369948125:web:c73d4507a1714a1f18be34"
 });
 
 const messaging = firebase.messaging();

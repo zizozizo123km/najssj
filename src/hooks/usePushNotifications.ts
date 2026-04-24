@@ -40,7 +40,7 @@ export function usePushNotifications() {
       
       if (status === 'granted') {
         const fcmToken = await getToken(messaging, {
-          vapidKey: 'BIsy66Ym_7xZ1O3bK_xS9u3vH9U8pW8nK7z0S4iE-Lp8' // You should replace this with your VAPID key
+          vapidKey: 'BGRimIsnG5iBOPXKxlxgYtpZaamMUDG9f_fuD_cQNRWykPHP8gMQV6b22ryVkPXqRoN_83IgtcCAafny_rX86Wo'
         });
         
         if (fcmToken) {
