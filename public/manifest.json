@@ -1,20 +1,20 @@
 {
-  "name": "TubeReels",
-  "short_name": "TubeReels",
+  "name": "معدلي DZ",
+  "short_name": "معدلي",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=muali&backgroundColor=4f46e5",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/svg+xml"
     },
     {
-      "src": "/icon-512.png",
+      "src": "https://api.dicebear.com/7.x/shapes/svg?seed=muali&backgroundColor=4f46e5",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/svg+xml"
     }
   ]
 }
