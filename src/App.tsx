@@ -25,6 +25,7 @@ import MaintenanceScreen from './components/MaintenanceScreen';
 import BroadcastNotification from './components/BroadcastNotification';
 import NotificationListener from './components/NotificationListener';
 import NotificationToast from './components/NotificationToast';
+import NotificationPermissionBanner from './components/NotificationPermissionBanner';
 import { NotificationProvider } from './context/NotificationProvider';
 import { auth, db, onAuthStateChanged, doc, onSnapshot, User } from './lib/firebase';
 
@@ -154,6 +155,7 @@ export default function App() {
         <NotificationToast notification={activeNotification} onClose={closeNotification} />
         <NotificationListener onNotification={handleNotification} />
         <BroadcastNotification />
+        <NotificationPermissionBanner />
         <Router>
           <Routes>
           {/* Admin Routes */}
