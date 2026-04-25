@@ -4,6 +4,26 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { getToken, onMessage } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
+const ALGERIAN_REMINDERS = [
+  {
+    title: 'يا خو تقرا ولا والو؟',
+    body: 'الباك راه قريب ونت مازال ما مدرت والو! نوض اضرب طلة على الدروس.'
+  },
+  {
+    title: 'حان وقت المراجعة!',
+    body: 'حاب تنجح ولا نسيت؟ الباك ما يستنى حتى واحد، ابدا تراجع دروك.'
+  },
+  {
+    title: 'الباك راه يجري!',
+    body: 'الوقت راه يطير يا بطل. ابدا اليوم خير من غدوة، النجاح يستنى فيك.'
+  },
+  {
+    title: 'وين راك واصل؟',
+    body: 'الباك راهو قريب، ما تخليش الدروس تتراكم عليك. نوض تقرا شوية.'
+  }
+];
 
 export function usePushNotifications() {
   const [token, setToken] = useState<string | null>(null);
@@ -12,6 +32,35 @@ export function usePushNotifications() {
   );
 
   const isNative = Capacitor.isNativePlatform();
+
+  const scheduleLocalReminder = async () => {
+    if (!isNative) return;
+
+    try {
+      // Clear existing notifications first to avoid spam
+      await LocalNotifications.cancel({ notifications: [{ id: 100 }] });
+
+      const randomMsg = ALGERIAN_REMINDERS[Math.floor(Math.random() * ALGERIAN_REMINDERS.length)];
+
+      // Schedule a notification for 4 hours from now as a reminder
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: randomMsg.title,
+            body: randomMsg.body,
+            id: 100,
+            schedule: { at: new Date(Date.now() + 1000 * 60 * 60 * 4) }, // 4 hours
+            sound: 'default',
+            actionTypeId: '',
+            extra: null
+          }
+        ]
+      });
+      console.info('Local reminder scheduled');
+    } catch (e) {
+      console.error('Error scheduling local notification', e);
+    }
+  };
 
   const requestPermission = async () => {
     if (isNative) {
@@ -27,6 +76,11 @@ export function usePushNotifications() {
         } else {
           setPermission('denied');
         }
+        
+        // Also request local notification permissions
+        await LocalNotifications.requestPermissions();
+        // Schedule first reminder
+        scheduleLocalReminder();
       } catch (error) {
         console.error('Error requesting native push permission:', error);
       }
@@ -58,8 +112,10 @@ export function usePushNotifications() {
     if (auth.currentUser) {
       try {
         await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
-          fcm_token: fcmToken
+          fcm_token: fcmToken,
+          last_token_update: new Date().toISOString()
         });
+        console.info('FCM Token saved to Firestore');
       } catch (error) {
         console.error('Error saving fcm token:', error);
       }
@@ -105,10 +161,7 @@ export function usePushNotifications() {
 
         await PushNotifications.addListener('pushNotificationReceived', notification => {
           console.log('Push notification received: ', notification);
-          // For foreground notifications, we might want to manually show a toast or notification
           if (notification.title || notification.body) {
-            // We could use an event emitter or a state update here
-            // For now, let's just log it. The UI should ideally have a way to show persistent alerts.
             new Notification(notification.title || 'تنبیه', {
               body: notification.body || '',
             });
@@ -126,8 +179,11 @@ export function usePushNotifications() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user && token) {
-        saveToken(token);
+      if (user) {
+        if (token) {
+          saveToken(token);
+        }
+        scheduleLocalReminder();
       }
     });
     return () => unsubscribe();
