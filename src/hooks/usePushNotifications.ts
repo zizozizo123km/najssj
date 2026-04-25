@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { messaging, auth, db, doc, updateDoc } from '../lib/firebase';
-import { getToken } from 'firebase/messaging';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getToken, onMessage } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
@@ -77,6 +78,19 @@ export function usePushNotifications() {
         });
     }
 
+    if (!isNative && messaging) {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Message received. ', payload);
+        if (payload.notification) {
+          new Notification(payload.notification.title || 'تنبیه', {
+            body: payload.notification.body || '',
+            icon: '/icon-192.png'
+          });
+        }
+      });
+      return () => unsubscribe();
+    }
+
     if (isNative) {
       const addListeners = async () => {
         await PushNotifications.addListener('registration', token => {
@@ -111,22 +125,31 @@ export function usePushNotifications() {
   }, []);
 
   useEffect(() => {
-    if (auth.currentUser && token) {
-      saveToken(token);
-    }
-  }, [auth.currentUser, token]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && token) {
+        saveToken(token);
+      }
+    });
+    return () => unsubscribe();
+  }, [token]);
 
   useEffect(() => {
-    if (auth.currentUser && isNative) {
-      requestPermission();
-    }
-  }, [auth.currentUser, isNative]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && isNative) {
+        requestPermission();
+      }
+    });
+    return () => unsubscribe();
+  }, [isNative]);
 
   useEffect(() => {
-    if (auth.currentUser && permission === 'granted' && !token) {
-      requestPermission();
-    }
-  }, [auth.currentUser, permission]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && permission === 'granted' && !token) {
+        requestPermission();
+      }
+    });
+    return () => unsubscribe();
+  }, [permission, token]);
 
   return { token, permission, requestPermission };
 }

@@ -134,9 +134,13 @@ async function startServer() {
       };
       const response = await admin.messaging().send(message);
       res.status(200).json({ success: true, messageId: response });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send notification:", error);
-      res.status(500).json({ error: "Failed to send notification" });
+      res.status(500).json({ 
+        error: "Failed to send notification", 
+        details: error?.message || String(error),
+        code: error?.code
+      });
     }
   });
 

@@ -26,21 +26,32 @@ export default function NotificationSender() {
       const tokens = profilesSnap.docs.map(doc => doc.data().fcm_token).filter(t => !!t);
 
       if (tokens.length > 0) {
-        // Send to each token (or use broadcast if supported by your server logic)
+        let successCount = 0;
+        let failCount = 0;
+        // Send to each token
         for (const token of tokens) {
           try {
-            await fetch('/api/send-notification', {
+            const response = await fetch('/api/send-notification', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ title, body, token })
             });
+            const data = await response.json();
+            if (response.ok && data.success) {
+              successCount++;
+            } else {
+              failCount++;
+              console.error('Failed to send to token:', token, data);
+            }
           } catch (err) {
-            console.error('Failed to send to token:', token, err);
+            failCount++;
+            console.error('Network error sending to token:', token, err);
           }
         }
+        alert(`تم الإرسال (Firestore + Push)! بنجاح: ${successCount}، فشل: ${failCount}`);
+      } else {
+        alert('تم الحفظ في Firestore بنجاح، ولكن لم يتم العثور على أجهزة مسجلة (FCM Tokens)');
       }
-
-      alert('تم إرسال الإشعار بنجاح (Firestore + Push)!');
       setTitle('');
       setBody('');
     } catch (e) {
