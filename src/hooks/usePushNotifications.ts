@@ -111,10 +111,22 @@ export function usePushNotifications() {
   }, []);
 
   useEffect(() => {
+    if (auth.currentUser && token) {
+      saveToken(token);
+    }
+  }, [auth.currentUser, token]);
+
+  useEffect(() => {
+    if (auth.currentUser && isNative) {
+      requestPermission();
+    }
+  }, [auth.currentUser, isNative]);
+
+  useEffect(() => {
     if (auth.currentUser && permission === 'granted' && !token) {
       requestPermission();
     }
-  }, [auth.currentUser]);
+  }, [auth.currentUser, permission]);
 
   return { token, permission, requestPermission };
 }

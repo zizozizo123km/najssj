@@ -5,7 +5,7 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 // But since this is a static file in public/, we might need to hardcode or use a template
 // I'll use placeholders that the user might need to fill or I can try to extract from the config
 firebase.initializeApp({
-  apiKey: "AIzaSyDKZ5mVnoggVlqft1P6iwk4GKA-2vATG3U",
+  apiKey: "AIzaSyAnjiQExY44yht2C2DjV_PliHq9jGO6vPI",
   authDomain: "nacero-8199e.firebaseapp.com",
   projectId: "nacero-8199e",
   storageBucket: "nacero-8199e.firebasestorage.app",

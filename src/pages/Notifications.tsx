@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
-import { db, collection, query, orderBy, onSnapshot } from '../lib/firebase';
+import { db, collection, query, orderBy, onSnapshot, handleFirestoreError, OperationType } from '../lib/firebase';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -12,6 +12,9 @@ export default function Notifications() {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setNotifications(data);
       setLoading(false);
+    }, (error) => {
+      setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'notifications');
     });
     return () => unsubscribe();
   }, []);

@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "362369948125",
+    "project_id": "nacero-8199e",
+    "storage_bucket": "nacero-8199e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:362369948125:android:4948d1c622d4f68318be34",
+        "android_client_info": {
+          "package_name": "co.median.android.wepmalb"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "362369948125-k5h6r20cos28o2ipg5n2e7mqlp4b5pnb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnjiQExY44yht2C2DjV_PliHq9jGO6vPI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "362369948125-k5h6r20cos28o2ipg5n2e7mqlp4b5pnb.apps.googleusercontent.com",
+              "client_type": 3
+        }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:362369948125:android:b893b5158f97264918be34",
+        "android_client_info": {
+          "package_name": "com.dzbac.mo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "362369948125-k5h6r20cos28o2ipg5n2e7mqlp4b5pnb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnjiQExY44yht2C2DjV_PliHq9jGO6vPI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "362369948125-k5h6r20cos28o2ipg5n2e7mqlp4b5pnb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

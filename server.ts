@@ -3,13 +3,18 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import admin from "firebase-admin";
+// @ts-ignore
+import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Initialize Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-});
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: firebaseConfig.projectId
+  });
+}
 const db = admin.firestore();
 
 async function getYouTubeApiKey(): Promise<string | null> {

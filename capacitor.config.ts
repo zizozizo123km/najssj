@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.muali.dz',
+  appId: 'com.dzbac.mo',
   appName: 'معدلي DZ',
   webDir: 'dist',
   server: {
