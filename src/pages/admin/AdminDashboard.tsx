@@ -5,6 +5,7 @@ import { LogOut, LayoutDashboard, Users, Settings, Bell } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
 import StudentTable from '../../components/admin/StudentTable';
 import NotificationSender from '../../components/admin/NotificationSender';
+import DeviceTokenList from '../../components/admin/DeviceTokenList';
 import ApiKeysForm from '../../components/admin/ApiKeysForm';
 import MaintenanceToggle from '../../components/admin/MaintenanceToggle';
 import BookUploadForm from '../../components/admin/BookUploadForm';
@@ -96,6 +97,7 @@ export default function AdminDashboard() {
     { id: 'books', label: 'المكتبة', icon: BookOpen },
     { id: 'summaries', label: 'الملخصات', icon: FileText },
     { id: 'notifications', label: 'الإشعارات', icon: Bell },
+    { id: 'devices', label: 'الأجهزة', icon: Settings },
     { id: 'settings', label: 'الإعدادات', icon: Settings },
   ];
 
@@ -179,6 +181,12 @@ export default function AdminDashboard() {
         {activeTab === 'notifications' && (
           <div className="space-y-6 max-w-2xl">
             <NotificationSender />
+          </div>
+        )}
+
+        {activeTab === 'devices' && (
+          <div className="space-y-6">
+            <DeviceTokenList />
           </div>
         )}
 

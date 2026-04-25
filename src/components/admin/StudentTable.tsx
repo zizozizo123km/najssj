@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, collection, query, where, onSnapshot, doc, deleteDoc, updateDoc } from '../../lib/firebase';
-import { Trash2, Ban, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Trash2, Ban, ShieldAlert, CheckCircle2, Bell } from 'lucide-react';
 import ModalConfirm from './ModalConfirm';
 
 export default function StudentTable() {
@@ -86,7 +86,12 @@ export default function StudentTable() {
           <tbody className="divide-y divide-gray-700">
             {students.map((student) => (
               <tr key={student.id} className="text-gray-300 hover:bg-gray-700/30 transition-colors">
-                <td className="p-4 font-medium">{student.displayName || 'بدون اسم'}</td>
+                <td className="p-4 font-medium flex items-center gap-2">
+                  {student.displayName || 'بدون اسم'}
+                  {student.fcm_token && (
+                    <Bell size={14} className="text-blue-500" title="الإشعارات مفعلة" />
+                  )}
+                </td>
                 <td className="p-4 text-sm" dir="ltr">{student.email}</td>
                 <td className="p-4 text-sm">{student.branch || '-'}</td>
                 <td className="p-4 text-sm text-gray-400">
