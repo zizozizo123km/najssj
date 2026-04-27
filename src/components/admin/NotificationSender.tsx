@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bell, Send, Loader2 } from 'lucide-react';
-import { db, collection, addDoc, serverTimestamp, getDocs, query, where } from '../../lib/firebase';
+import { db, collection, addDoc, serverTimestamp, getDocs, query, where, deleteDoc, doc } from '../../lib/firebase';
 
 export default function NotificationSender() {
   const [title, setTitle] = useState('');
@@ -13,7 +13,7 @@ export default function NotificationSender() {
     setLoading(true);
     try {
       // 1. Save to Firestore for the "Notifications" page list
-      await addDoc(collection(db, 'notifications'), {
+      const docRef = await addDoc(collection(db, 'notifications'), {
         title,
         body,
         created_at: serverTimestamp(),
@@ -26,37 +26,35 @@ export default function NotificationSender() {
       const tokens = profilesSnap.docs.map(doc => doc.data().fcm_token).filter(t => !!t);
 
       if (tokens.length > 0) {
-        let successCount = 0;
-        let failCount = 0;
         // Send to each token
         for (const token of tokens) {
           try {
-            const response = await fetch('/api/send-notification', {
+            await fetch('/api/send-notification', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ title, body, token })
             });
-            const data = await response.json();
-            if (response.ok && data.success) {
-              successCount++;
-            } else {
-              failCount++;
-              console.error('Failed to send to token:', token, data);
-            }
           } catch (err) {
-            failCount++;
             console.error('Network error sending to token:', token, err);
           }
         }
-        alert(`تم الإرسال (Firestore + Push)! بنجاح: ${successCount}، فشل: ${failCount}`);
-      } else {
-        alert('تم الحفظ في Firestore بنجاح، ولكن لم يتم العثور على أجهزة مسجلة (FCM Tokens)');
       }
+      
       setTitle('');
       setBody('');
+
+      // Auto delete from database after 5 seconds as requested
+      setTimeout(async () => {
+        try {
+          await deleteDoc(docRef);
+          console.info('Notification auto-deleted after 5s');
+        } catch (e) {
+          console.error('Auto-delete failed:', e);
+        }
+      }, 5000);
+
     } catch (e) {
       console.error(e);
-      alert('حدث خطأ أثناء الإرسال');
     } finally {
       setLoading(false);
     }
