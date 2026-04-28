@@ -42,26 +42,30 @@ export default function AdminDashboard() {
 
     // Stats fetching
     const fetchStats = async () => {
-      // Total students
-      const studentQuery = query(collection(db, 'profiles'), where('role', '!=', 'admin'));
-      const studentSnapshot = await getCountFromServer(studentQuery);
-      setStats(prev => ({ ...prev, totalStudents: studentSnapshot.data().count }));
+      try {
+        // Total students
+        const studentQuery = query(collection(db, 'profiles'), where('role', '!=', 'admin'));
+        const studentSnapshot = await getCountFromServer(studentQuery);
+        setStats(prev => ({ ...prev, totalStudents: studentSnapshot.data().count }));
 
-      // Active Today (simplified: profiles created today)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const activeQuery = query(
-        collection(db, 'profiles'), 
-        where('role', '!=', 'admin'),
-        where('created_at', '>=', Timestamp.fromDate(today))
-      );
-      const activeSnapshot = await getCountFromServer(activeQuery);
-      setStats(prev => ({ ...prev, activeToday: activeSnapshot.data().count }));
+        // Active Today (simplified: profiles created today)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // Removed role != admin because multiple fields inequality is not supported without composite index
+        const activeQuery = query(
+          collection(db, 'profiles'), 
+          where('created_at', '>=', Timestamp.fromDate(today))
+        );
+        const activeSnapshot = await getCountFromServer(activeQuery);
+        setStats(prev => ({ ...prev, activeToday: activeSnapshot.data().count }));
 
-      // Notifications sent
-      const notifQuery = collection(db, 'notifications');
-      const notifSnapshot = await getCountFromServer(notifQuery);
-      setStats(prev => ({ ...prev, notificationsSent: notifSnapshot.data().count }));
+        // Notifications sent
+        const notifQuery = collection(db, 'notifications');
+        const notifSnapshot = await getCountFromServer(notifQuery);
+        setStats(prev => ({ ...prev, notificationsSent: notifSnapshot.data().count }));
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
 
       // App status
       const unsubscribeSettings = onSnapshot(doc(db, 'admin_settings', 'general'), (doc) => {

@@ -54,13 +54,19 @@ export default function EngagementTool() {
     try {
       let profilesSnap;
       
-      if (campaignId === 'inactivity') {
-        // Filter for users inactive for more than 3 days
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-        const q = query(collection(db, 'profiles'), where('last_active_at', '<', threeDaysAgo.toISOString()));
-        profilesSnap = await getDocs(q);
-      } else {
+      try {
+        if (campaignId === 'inactivity') {
+          // Filter for users inactive for more than 3 days
+          const threeDaysAgo = new Date();
+          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+          const q = query(collection(db, 'profiles'), where('last_active_at', '<', threeDaysAgo.toISOString()));
+          profilesSnap = await getDocs(q);
+        } else {
+          profilesSnap = await getDocs(collection(db, 'profiles'));
+        }
+      } catch (queryError) {
+        console.error("Campaign query error:", queryError);
+        // Fallback to all profiles if range query fails (e.g. index missing)
         profilesSnap = await getDocs(collection(db, 'profiles'));
       }
 
