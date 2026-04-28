@@ -178,11 +178,21 @@ export function usePushNotifications() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         if (token) {
           saveToken(token);
         }
+        
+        // Track last activity
+        try {
+          await updateDoc(doc(db, 'profiles', user.uid), {
+            last_active_at: new Date().toISOString()
+          });
+        } catch (e) {
+          console.error('Error updating activity:', e);
+        }
+
         scheduleLocalReminder();
       }
     });
