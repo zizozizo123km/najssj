@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db, collection, query, where, onSnapshot, doc, getDoc, getCountFromServer, signOut, onAuthStateChanged, Timestamp } from '../../lib/firebase';
-import { LogOut, LayoutDashboard, Users, Settings, Bell } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Settings, Bell, Sparkles } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
 import StudentTable from '../../components/admin/StudentTable';
 import NotificationSender from '../../components/admin/NotificationSender';

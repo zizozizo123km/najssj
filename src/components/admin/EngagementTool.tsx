@@ -52,7 +52,18 @@ export default function EngagementTool() {
     addLog(`بدء حملة: ${campaign.title}...`);
 
     try {
-      const profilesSnap = await getDocs(collection(db, 'profiles'));
+      let profilesSnap;
+      
+      if (campaignId === 'inactivity') {
+        // Filter for users inactive for more than 3 days
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const q = query(collection(db, 'profiles'), where('last_active_at', '<', threeDaysAgo.toISOString()));
+        profilesSnap = await getDocs(q);
+      } else {
+        profilesSnap = await getDocs(collection(db, 'profiles'));
+      }
+
       const activeTokens = profilesSnap.docs
         .map(doc => doc.data().fcm_token)
         .filter(token => !!token);
