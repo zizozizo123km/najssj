@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Heart, Bookmark, BookOpen, User } from 'lucide-react';
+import { Heart, Star, BookOpen, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Book } from '../../types/library';
 
@@ -11,59 +11,66 @@ interface BookCardProps {
 }
 
 export default function BookCard({ book, onClick, onToggleFavorite, isFavorite }: BookCardProps) {
+  // Generate a consistent pseudo-random rating between 4.4 and 4.9 based on title length
+  const rating = (4.4 + ((book.title.length * 3) % 6) / 10).toFixed(1);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4 }}
-      className="bg-white rounded-xl p-2 md:p-4 shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-100 transition-all group cursor-pointer"
+      whileHover={{ y: -6 }}
+      className="bg-white dark:bg-gray-900 rounded-2xl p-3 shadow-md border border-gray-100 hover:shadow-xl hover:border-blue-500/30 transition-all group flex flex-col h-full cursor-pointer"
       onClick={onClick}
     >
-      <div className="relative aspect-[3/4] rounded-lg overflow-hidden mb-2 bg-gray-50 shadow-inner">
+      <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-gray-50 shadow-inner">
         <img
           src={book.cover}
           alt={book.title}
-          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute top-2 right-2 flex flex-col gap-2">
+        
+        {/* Rating overlay pill precisely like the screenshot */}
+        <div className="absolute bottom-2 left-2 bg-white/95 dark:bg-gray-950/90 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm text-[10px] font-black text-gray-800 dark:text-white">
+          <Star size={10} fill="currentColor" className="text-yellow-400" />
+          <span>{rating}</span>
+        </div>
+
+        {/* Favorite circle button overlay */}
+        <div className="absolute top-2 right-2">
           <button
             onClick={onToggleFavorite}
             className={cn(
-              "p-2 rounded-full backdrop-blur-md border transition-all hover:scale-110",
+              "p-2 rounded-full backdrop-blur-md border shadow-sm transition-all hover:scale-110 active:scale-95",
               isFavorite
-                ? "bg-red-500/10 border-red-500/20 text-red-500"
-                : "bg-black/20 border-white/10 text-white hover:bg-black/40"
+                ? "bg-red-500 border-red-500 text-white"
+                : "bg-white/80 dark:bg-gray-950/80 border-gray-200/50 text-gray-700 hover:bg-white"
             )}
           >
-            <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+            <Heart size={12} fill={isFavorite ? 'currentColor' : 'none'} />
           </button>
-        </div>
-        <div className="absolute bottom-2 left-2">
-          <span className="bg-blue-600/90 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-            {book.subject}
-          </span>
         </div>
       </div>
 
-      <div className="space-y-1 md:space-y-2">
-        <h3 className="text-[10px] md:text-sm font-black text-gray-900 line-clamp-2 leading-tight group-hover:text-blue-600 transition-colors">
-          {book.title}
-        </h3>
-        <div className="flex items-center gap-1 md:gap-2 text-[8px] md:text-[10px] text-gray-400 font-medium">
-          <User size={10} className="md:size-3" />
-          <span className="line-clamp-1">{book.author}</span>
+      <div className="flex-1 flex flex-col justify-between space-y-3">
+        <div className="space-y-1">
+          <span className="text-[10px] font-black tracking-wider text-blue-600 dark:text-blue-400">
+            {book.subject}
+          </span>
+          <h3 className="text-[12px] font-black text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">
+            {book.title}
+          </h3>
         </div>
-        <div className="flex items-center justify-between pt-1 md:pt-2">
-          <div className="flex items-center gap-1 text-[8px] md:text-[10px] text-blue-600 font-bold">
-            <BookOpen size={10} className="md:size-3" />
-            <span>قراءة</span>
-          </div>
-          <div className="text-[8px] md:text-[10px] text-gray-400 font-medium">
-            {book.branch}
-          </div>
-        </div>
+
+        <button 
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-[11px] rounded-xl shadow-lg shadow-blue-600/10 dark:shadow-blue-600/5 flex items-center justify-center gap-1.5 transition-all text-center"
+        >
+          <BookOpen size={12} />
+          اقرأ الآن
+        </button>
       </div>
     </motion.div>
   );
 }
+

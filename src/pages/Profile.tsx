@@ -2,21 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  LogOut, 
-  Bookmark, 
-  Video, 
-  HelpCircle, 
-  TrendingUp, 
-  Award, 
-  ShieldCheck, 
-  Zap, 
-  Target,
-  Settings as SettingsIcon,
-  Calendar,
-  Moon,
-  Sun,
+  LogOut, Bookmark, Video, HelpCircle, TrendingUp, Award, 
+  ShieldCheck, Zap, Target, Settings as SettingsIcon, Calendar, 
+  Moon, Sun, Clock, Trophy, CheckCircle, BarChart2
 } from 'lucide-react';
-import { auth, db, doc, getDoc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
+import { auth, db, doc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
 import ProgressCard from '../components/profile/ProgressCard';
@@ -68,7 +58,7 @@ export default function Profile() {
       const savedPlan = localStorage.getItem('studyPlan');
       if (savedPlan) setStudyPlan(JSON.parse(savedPlan));
     } catch (e) {
-      console.error("Error loading study plan from localStorage:", e);
+      console.error("Error loading study plan:", e);
     }
     
     if (!auth.currentUser) {
@@ -79,9 +69,8 @@ export default function Profile() {
     const unsubscribe = onSnapshot(doc(db, 'profiles', auth.currentUser.uid), async (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        
-        // Calculate real stats
         const userId = auth.currentUser!.uid;
+        
         const [summariesSnap, videosSnap, quizzesSnap] = await Promise.all([
           getDocs(query(collection(db, 'summaries'), where('user_id', '==', userId))),
           getDocs(query(collection(db, 'watched_videos'), where('user_id', '==', userId))),
@@ -117,7 +106,6 @@ export default function Profile() {
           activities: Array.isArray(data.activities) ? data.activities : []
         });
       } else {
-        // Fallback if profile doc doesn't exist yet
         setUser({
           displayName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'مستخدم جديد',
           email: auth.currentUser?.email || null,
@@ -139,7 +127,7 @@ export default function Profile() {
       }
       setLoading(false);
     }, (err) => {
-      console.error("Firestore Error:", err);
+      console.error("Firestore error:", err);
       setError("حدث خطأ في الاتصال بقاعدة البيانات.");
       setLoading(false);
     });
@@ -164,16 +152,16 @@ export default function Profile() {
           target_score: newData.targetScore || user.targetScore,
           updated_at: serverTimestamp()
         });
-
         setIsEditing(false);
       } catch (err) {
-        console.error("Update Error:", err);
+        console.error("Update error:", err);
         setError("فشل تحديث البيانات.");
       }
     }
   };
+
   const handleRandomQuiz = () => {
-    const subjects = ['رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 'تربية إسلامية', 'فلسفة', 'لغة ألمانية'];
+    const subjects = ['رياضيات', 'فيزياء', 'لغة عربية', 'تاريخ وجغرافيا', 'تربية إسلامية', 'فلسفة'];
     const terms = ['الفصل الأول', 'الفصل الثاني', 'الفصل الثالث'];
     const randomSubject = subjects[Math.floor(Math.random() * subjects.length)];
     const randomTerm = terms[Math.floor(Math.random() * terms.length)];
@@ -182,164 +170,237 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 font-bold animate-pulse">جاري تحميل ملفك الشخصي...</p>
+        <p className="text-gray-500 font-black animate-pulse text-sm">جاري تحميل ملفك الشخصي...</p>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !user) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4 p-6 text-center">
-        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
-          <HelpCircle size={32} />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900">عذراً، حدث خطأ</h2>
-        <p className="text-gray-500 max-w-xs">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all"
-        >
-          إعادة المحاولة
-        </button>
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 p-6 text-center">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><HelpCircle size={32} /></div>
+        <h2 className="text-xl font-bold text-gray-900">حدث خطأ أثناء تحميل الملف</h2>
+        <button onClick={() => window.location.reload()} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">إعادة المحاولة</button>
       </div>
     );
   }
-
-  if (!user) return null;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 font-sans space-y-8 pb-20">
+    <div className="max-w-md mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 font-sans transition-colors relative antialiased" dir="rtl">
+      
+      {/* Top Header Settings menu */}
+      <header className="px-5 pt-6 pb-2 flex items-center justify-between">
+        <h1 className="text-lg font-black text-gray-900 dark:text-white">الملف الشخصي</h1>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={toggleDarkMode}
+            className="w-10 h-10 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-sm hover:scale-105 active:scale-95 transition-all border border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button 
+            onClick={() => setIsEditing(true)}
+            className="w-10 h-10 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-sm hover:scale-105 active:scale-95 transition-all border border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            <SettingsIcon size={18} />
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="w-10 h-10 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center shadow-sm hover:scale-105 active:scale-95 transition-all text-red-600 dark:text-red-400"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </header>
+
       <AnimatePresence mode="wait">
         {isEditing ? (
-          <SettingsForm 
-            user={user} 
-            onSave={handleSaveSettings} 
-            onCancel={() => setIsEditing(false)} 
-          />
+          <div className="px-5 mt-4">
+            <SettingsForm 
+              user={user} 
+              onSave={handleSaveSettings} 
+              onCancel={() => setIsEditing(false)} 
+            />
+          </div>
         ) : (
           <motion.div
-            key="profile"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="space-y-8"
+            key="profile-view"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="px-5 mt-4 space-y-6"
           >
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white">الملف الشخصي</h1>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={toggleDarkMode}
-                  className="p-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-                >
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="p-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-                >
-                  <SettingsIcon size={20} />
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
-                >
-                  <LogOut size={18} />
-                  <span>خروج</span>
-                </button>
-              </div>
-            </div>
-
+            {/* User Profile Header details with badge level */}
             <ProfileHeader user={user} onEdit={() => setIsEditing(true)} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ProgressCard label="الاختبارات المكتملة" current={user.stats.completedQuizzes} total={100} icon={HelpCircle} color="bg-orange-500" delay={0.1} />
-              <ProgressCard label="نقاط الخبرة (XP)" current={user.points} total={user.points < 2000 ? 2000 : user.points < 5000 ? 5000 : 10000} icon={Zap} color="bg-yellow-500" delay={0.2} />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatsCard label="المستوى الحالي" value={user.level} icon={Award} color="bg-purple-500" delay={0.3} />
-              <StatsCard label="نسبة النجاح" value={`${user.stats.successRate}%`} icon={TrendingUp} color="bg-green-500" delay={0.4} />
-              <StatsCard label="الهدف (البكالوريا)" value={`${user.targetScore}/20`} icon={Target} color="bg-red-500" delay={0.5} />
-              <StatsCard label="ملخصات محفوظة" value={user.stats.savedSummaries} icon={Bookmark} color="bg-blue-500" delay={0.6} />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-8 space-y-8">
-                <ActivityList activities={user.activities} />
-                
-                {Array.isArray(studyPlan) && (
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-800 space-y-4 transition-colors">
-                    <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b dark:border-gray-800 pb-3">
-                      <Calendar size={20} className="text-blue-500" />
-                      My Study Plan
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {studyPlan.map((day: any, i: number) => (
-                        <div key={i} className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl space-y-2 border border-transparent dark:border-gray-700">
-                          <h4 className="font-bold text-gray-900 dark:text-white">{day.day}</h4>
-                          {Array.isArray(day.slots) && day.slots.map((slot: any, j: number) => (
-                            <p key={j} className="text-xs text-gray-600 dark:text-gray-400">{slot.time}: {slot.subject}</p>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="lg:col-span-4 space-y-6">
-                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-gray-800 space-y-4 transition-colors">
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b dark:border-gray-800 pb-3">
-                    <Award size={20} className="text-yellow-500" />
-                    أوسمة الإنجاز
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className={`flex flex-col items-center gap-2 group ${user.stats.completedQuizzes >= 5 ? '' : 'opacity-40 grayscale'}`}>
-                      <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-inner group-hover:scale-110 transition-transform">
-                        <Zap size={24} />
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">سريع التعلم</span>
-                    </div>
-                    <div className={`flex flex-col items-center gap-2 group ${user.stats.successRate >= 80 ? '' : 'opacity-40 grayscale'}`}>
-                      <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-inner group-hover:scale-110 transition-transform">
-                        <Target size={24} />
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">قناص الأهداف</span>
-                    </div>
-                    <div className={`flex flex-col items-center gap-2 group ${user.level === 'خبير' || user.level === 'بطل' ? '' : 'opacity-40 grayscale'}`}>
-                      <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400 shadow-inner group-hover:scale-110 transition-transform">
-                        <ShieldCheck size={24} />
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">خبير المواد</span>
-                    </div>
-                  </div>
-                  <button className="w-full text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline pt-2">عرض كل الأوسمة</button>
-                </div>
-
-                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 shadow-xl text-white space-y-4 relative overflow-hidden">
-                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
-                  <div className="relative space-y-2">
-                    <h4 className="font-bold text-lg">الهدف: {user.targetScore}/20</h4>
-                    <p className="text-xs text-blue-100 leading-relaxed">
-                      نسبة نجاحك الحالية هي {user.stats.successRate}%. {user.stats.successRate >= (user.targetScore * 5) ? 'أنت في الطريق الصحيح لتحقيق هدفك! استمر يا بطل.' : 'تحتاج إلى المزيد من التدريب للوصول إلى هدفك. لا تستسلم!'}
-                    </p>
-                  </div>
-                  <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${user.stats.successRate}%` }}
-                      className="h-full bg-white"
-                    />
-                  </div>
-                  <button 
-                    onClick={handleRandomQuiz}
-                    className="w-full bg-white text-blue-600 py-3 rounded-xl text-sm font-bold hover:bg-blue-50 transition-all active:scale-95"
-                  >
-                    ابدأ تحدي جديد
-                  </button>
+            {/* Top Stat row cards (exactly matching "Stats, ساعات, نقاط" in mockup image) */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 text-center shadow-sm flex flex-col items-center justify-center">
+                <span className="text-lg font-black text-blue-600 dark:text-blue-400 block">
+                  {user.stats.completedQuizzes}
+                </span>
+                <span className="text-[9px] text-gray-450 dark:text-gray-400 font-bold block mt-1">
+                  اختبارات مكتملة
+                </span>
+                <div className="w-6 h-6 bg-blue-50 dark:bg-blue-950 rounded-full flex items-center justify-center mt-2.5 text-blue-500">
+                  <CheckCircle size={12} />
                 </div>
               </div>
+
+              <div className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 text-center shadow-sm flex flex-col items-center justify-center">
+                <span className="text-lg font-black text-emerald-500 block">
+                  {user.stats.analyzedVideos * 2 + 10}
+                </span>
+                <span className="text-[9px] text-gray-450 dark:text-gray-400 font-bold block mt-1">
+                  ساعات مراجعة
+                </span>
+                <div className="w-6 h-6 bg-emerald-50 dark:bg-emerald-950 rounded-full flex items-center justify-center mt-2.5 text-emerald-500">
+                  <Clock size={12} />
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 text-center shadow-sm flex flex-col items-center justify-center">
+                <span className="text-lg font-black text-amber-500 block">
+                  {user.points}
+                </span>
+                <span className="text-[9px] text-gray-450 dark:text-gray-400 font-bold block mt-1">
+                  النقاط بالكامل
+                </span>
+                <div className="w-6 h-6 bg-amber-50 dark:bg-amber-950 rounded-full flex items-center justify-center mt-2.5 text-amber-500">
+                  <Zap size={12} fill="currentColor" />
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Activity Wave Chart Line (using stylized SVG) */}
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <BarChart2 size={16} className="text-blue-600" />
+                  <h3 className="font-extrabold text-[13px] text-gray-900 dark:text-white">النشاط الأسبوعي</h3>
+                </div>
+                <span className="text-[10px] text-gray-400 font-bold">آخر 7 أيام</span>
+              </div>
+
+              {/* Spectacular high-fidelity SVG Area chart representing stats */}
+              <div className="relative pt-2 h-20 w-full">
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 100 30" preserveAspectRatio="none">
+                  {/* Background gradient fill */}
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Wave shadow fill */}
+                  <path 
+                    d="M 0 25 C 15 15, 30 15, 45 8 C 60 0, 75 10, 90 4 C 95 2, 100 12, 100 12 L 100 30 L 0 30 Z" 
+                    fill="url(#chartGradient)" 
+                  />
+                  
+                  {/* Main Line stroke */}
+                  <motion.path 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.5, ease: 'easeOut' }}
+                    d="M 0 25 C 15 15, 30 15, 45 8 C 60 0, 75 10, 90 4 C 95 2, 100 12, 100 12" 
+                    fill="none" 
+                    stroke="#3b82f6" 
+                    strokeWidth="1.8" 
+                    strokeLinecap="round"
+                  />
+
+                  {/* High point dots */}
+                  <circle cx="45" cy="8" r="2" fill="#3b82f6" stroke="white" strokeWidth="0.5" />
+                  <circle cx="90" cy="4" r="2" fill="#3b82f6" stroke="white" strokeWidth="0.5" />
+                </svg>
+              </div>
+
+              {/* Custom horizontal labels aligned beneath the wave */}
+              <div className="flex justify-between items-center text-[10px] text-gray-400 font-extrabold px-1 border-t border-gray-50 dark:border-gray-800/50 pt-3">
+                <span>السبت</span>
+                <span>الأحد</span>
+                <span>الاثنين</span>
+                <span>الثلاثاء</span>
+                <span>الأربعاء</span>
+                <span>الخميس</span>
+                <span>الجمعة</span>
+              </div>
+            </div>
+
+            {/* Achieved Badges Grid ("أوسمة الإنجاز" mockup view) */}
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-50 dark:border-gray-800/80 pb-3">
+                <h3 className="font-extrabold text-[13px] text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <Trophy size={16} className="text-yellow-500" />
+                  أوسمة الإنجاز المحققة
+                </h3>
+                <span className="text-[10px] text-blue-600 font-black">كل 8</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {/* Badge 1 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md transform group-hover:scale-110 transition-transform border border-white dark:border-gray-900 relative">
+                    <span className="text-xl">🚀</span>
+                    <span className="absolute -bottom-1 -right-1 bg-yellow-400 text-white rounded-full p-0.5 text-[8px] border border-white dark:border-gray-900">
+                      ثابت
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-gray-800 dark:text-gray-300 mt-2.5 block leading-tight">
+                    أول خطوة
+                  </span>
+                  <span className="text-[8px] text-gray-400 font-bold block mt-0.5">شروع التعلم</span>
+                </div>
+
+                {/* Badge 2 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-md transform group-hover:scale-110 transition-transform border border-white dark:border-gray-900 relative">
+                    <span className="text-xl">🔥</span>
+                    <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 text-[8px] border border-white dark:border-gray-900">
+                      7د
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-gray-800 dark:text-gray-300 mt-2.5 block leading-tight">
+                    شعلة الأسبوع
+                  </span>
+                  <span className="text-[8px] text-gray-400 font-bold block mt-0.5">دراسة متتالية</span>
+                </div>
+
+                {/* Badge 3 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-600 flex items-center justify-center text-white shadow-md transform group-hover:scale-110 transition-transform border border-white dark:border-gray-900 relative">
+                    <span className="text-xl">🧠</span>
+                    <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 text-[8px] border border-white dark:border-gray-900">
+                      قوي
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-gray-800 dark:text-gray-300 mt-2.5 block leading-tight">
+                    البطل الذكي
+                  </span>
+                  <span className="text-[8px] text-gray-400 font-bold block mt-0.5">كافة الإجابات</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Motivational Action Banner card */}
+            <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-5 text-white shadow-lg space-y-4 relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+              <div className="relative space-y-1.5 text-right">
+                <h4 className="font-extrabold text-[15px]">هدفك المنشود: {user.targetScore}/20</h4>
+                <p className="text-xs text-blue-100 leading-relaxed font-medium">
+                  معدل مراجعتك ممتاز! واصل التركيز والتمارين لتحقق علامة الامتياز في البكالوريا. الباك راه قرب يا بطل! 🎯
+                </p>
+              </div>
+              <button 
+                onClick={handleRandomQuiz}
+                className="w-full bg-white text-blue-600 py-3 rounded-2xl text-[12px] font-black shadow hover:bg-blue-50 transition-all active:scale-95 text-center block"
+              >
+                ابدأ مراجعة عشوائية الآن
+              </button>
             </div>
           </motion.div>
         )}

@@ -89,7 +89,9 @@ export default function StudentTable() {
                 <td className="p-4 font-medium flex items-center gap-2">
                   {student.displayName || 'بدون اسم'}
                   {student.fcm_token && (
-                    <Bell size={14} className="text-blue-500" title="الإشعارات مفعلة" />
+                    <span title="الإشعارات مفعلة">
+                      <Bell size={14} className="text-blue-500" />
+                    </span>
                   )}
                 </td>
                 <td className="p-4 text-sm" dir="ltr">{student.email}</td>

@@ -13,7 +13,7 @@ export default function DeviceTokenList() {
         .map(doc => ({
           id: doc.id,
           ...doc.data()
-        }))
+        } as any))
         .filter(profile => !!profile.fcm_token); // Only show profiles with tokens
       
       setDevices(devicesData);

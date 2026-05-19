@@ -108,10 +108,13 @@ export default function StudyPlanner() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 space-y-8" dir="rtl">
+    <div className="max-w-md mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 font-sans px-5 py-6 space-y-8" dir="rtl">
       <header className="text-center space-y-2">
-        <h1 className="text-3xl font-black text-gray-900">مخطط الدراسة الذكي</h1>
-        <p className="text-gray-500">أنشئ جدول مراجعة ذكي باستخدام الذكاء الاصطناعي</p>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center gap-2">
+          <Calendar size={24} className="text-blue-600" />
+          مخطط الدراسة الذكي
+        </h1>
+        <p className="text-xs text-gray-500 dark:text-gray-400 font-bold">أنشئ جدول مراجعة ذكي باستخدام الذكاء الاصطناعي</p>
       </header>
 
       {!plan ? (

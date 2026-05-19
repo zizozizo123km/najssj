@@ -196,23 +196,23 @@ export default function VirtualTeacher() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 font-sans max-w-4xl mx-auto shadow-xl rounded-2xl overflow-hidden border border-gray-200 pb-20">
+    <div className="flex flex-col h-[calc(100vh-80px)] md:h-full bg-[#F3F7FA] dark:bg-gray-950 font-sans max-w-xl mx-auto shadow-xl overflow-hidden border border-gray-150 dark:border-gray-900 pb-20 rounded-3xl" dir="rtl">
       {/* Header */}
-      <header className="bg-white p-4 border-b flex items-center justify-between shadow-sm">
+      <header className="bg-white dark:bg-gray-900 p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <TeacherAvatar />
           <div>
-            <h1 className="font-bold text-gray-900">الأستاذ الافتراضي</h1>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] text-gray-500 font-medium">متصل الآن لمساعدتك</span>
+            <h1 className="font-black text-[15px] text-gray-900 dark:text-white">الأستاذ الافتراضي</h1>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold">متصل الآن لمساعدتك</span>
             </div>
           </div>
         </div>
         <select 
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="text-xs bg-gray-100 border-none rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 font-bold text-gray-700"
+          className="text-xs bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 font-extrabold text-gray-700 dark:text-gray-300 outline-none"
         >
           {availableSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>

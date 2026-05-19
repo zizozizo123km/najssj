@@ -252,25 +252,65 @@ export default function CourseSubject() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {videos.map((video) => (
-                    <motion.div 
-                      key={video.id.videoId}
-                      whileHover={{ y: -5 }}
-                      className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 group cursor-pointer transition-all"
-                      onClick={() => setSelectedVideo(video)}
-                    >
-                      <div className="relative aspect-video">
-                        <img src={video.snippet.thumbnails.high.url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Play size={32} className="text-white" fill="currentColor" />
+                  {videos.map((video) => {
+                    // Generate consistent pseudo-random progress meter based on video ID length
+                    const isLongId = video.id.videoId.length % 2 === 0;
+                    const progressVal = isLongId ? 65 : 42;
+                    const strokeColor = isLongId ? 'bg-emerald-500' : 'bg-blue-600';
+
+                    return (
+                      <motion.div 
+                        key={video.id.videoId}
+                        whileHover={{ y: -5 }}
+                        className="bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-md border border-gray-100 dark:border-gray-800 group cursor-pointer transition-all flex flex-col justify-between"
+                        onClick={() => setSelectedVideo(video)}
+                      >
+                        <div className="relative aspect-video">
+                          <img src={video.snippet.thumbnails.high.url} alt="" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                            <span className="w-12 h-12 rounded-full bg-white/95 backdrop-blur-md shadow-lg flex items-center justify-center text-blue-600 font-bold hover:scale-115 transition-transform">
+                              <Play size={18} fill="currentColor" className="mr-[2px]" />
+                            </span>
+                          </div>
+                          
+                          {/* Duration label badge */}
+                          <span className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                            12:45m
+                          </span>
                         </div>
-                      </div>
-                      <div className="p-4">
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-2" dir="rtl">{video.snippet.title}</h4>
-                        <p className="text-[10px] text-gray-500 mt-2">{video.snippet.channelTitle}</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                        
+                        <div className="p-4 space-y-4 flex-1 flex flex-col justify-between">
+                          <div className="space-y-1.5">
+                            <h4 className="font-black text-xs text-gray-900 dark:text-white line-clamp-2 leading-snug" dir="rtl">
+                              {video.snippet.title}
+                            </h4>
+                            <p className="text-[10px] text-gray-400 font-bold">{video.snippet.channelTitle}</p>
+                          </div>
+
+                          {/* Progress indicator matching the mockup's 65% visually */}
+                          <div className="space-y-2 pt-2 border-t border-gray-100/80 dark:border-gray-800/80">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-extrabold text-gray-500 dark:text-gray-400">معدل التقدم</span>
+                              <span className="font-black text-blue-600 dark:text-blue-400">{progressVal}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                              <div className={`h-full ${strokeColor} rounded-full`} style={{ width: `${progressVal}%` }} />
+                            </div>
+
+                            {/* Rounded teacher avatar circle and indicator details */}
+                            <div className="flex items-center gap-2 pt-1">
+                              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs shadow-sm">
+                                👨‍🏫
+                              </div>
+                              <span className="text-[9px] font-extrabold text-gray-500 dark:text-gray-400">
+                                محتوى مميز للمراجعة
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>

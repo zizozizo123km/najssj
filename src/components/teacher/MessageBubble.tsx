@@ -23,15 +23,15 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       className={`flex gap-3 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${isUser ? 'bg-indigo-600 text-white' : 'bg-blue-600 text-white'}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${isUser ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}`}>
         {isUser ? <User size={18} /> : <Bot size={18} />}
       </div>
       
       <div className={`flex flex-col max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`p-4 rounded-2xl shadow-sm border ${
           isUser 
-            ? 'bg-indigo-600 text-white rounded-tr-none border-indigo-500' 
-            : 'bg-white text-gray-800 rounded-tl-none border-gray-100'
+            ? 'bg-blue-600 text-white rounded-tr-none border-blue-500 shadow-md shadow-blue-600/10' 
+            : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded-tl-none border-gray-100 dark:border-gray-800'
         }`}>
           {message.image && (
             <img 
