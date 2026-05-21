@@ -36,25 +36,22 @@ export default function OAuthButtons({ onSuccess, onError }: OAuthButtonsProps) 
   };
 
   return (
-    <div className="space-y-3">
-      <div className="relative flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
-        </div>
-        <span className="relative px-4 text-xs text-gray-500 bg-white uppercase">أو عبر</span>
-      </div>
-
-      <div className="flex justify-center">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleGoogleLogin}
-          className="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all w-full max-w-xs"
-        >
+    <div className="flex justify-center flex-col items-center gap-4">
+      <motion.button
+        whileHover={{ scale: 1.01, backgroundColor: '#fcfcfc' }}
+        whileTap={{ scale: 0.99 }}
+        onClick={handleGoogleLogin}
+        className="flex items-center justify-center gap-4 p-5 border border-gray-100 rounded-[24px] hover:bg-gray-50 transition-all w-full shadow-sm bg-white group"
+      >
+        <div className="w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-sm border border-gray-50">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-          <span className="text-sm font-bold text-gray-700">تسجيل الدخول عبر Google</span>
-        </motion.button>
-      </div>
+        </div>
+        <span className="text-sm font-black text-[#1E293B]">تسجيل الدخول عبر Google</span>
+      </motion.button>
+      
+      <p className="text-[10px] text-gray-400 font-bold max-w-[200px] leading-relaxed">
+        بالتسجيل، أنت توافق على شروط الخدمة وسياسة الخصوصية
+      </p>
     </div>
   );
 }
