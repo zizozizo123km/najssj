@@ -182,13 +182,33 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <button 
-          onClick={() => navigate('/notifications')} 
-          className="w-10 h-10 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-sm relative group active:scale-95 transition-transform border border-gray-100 dark:border-gray-800"
-        >
-          <Bell size={20} className="text-gray-700 dark:text-gray-300 group-hover:rotate-12 transition-transform" />
-          <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse" />
-        </button>
+        <div className="flex items-center gap-2">
+          <motion.div
+            animate={{ 
+              x: [-1, 1, -1, 1, 0],
+              rotate: [-0.5, 0.5, -0.5, 0.5, 0]
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 0.1, 
+              repeatDelay: 2.5 
+            }}
+            className="w-10 h-10 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden"
+          >
+            <img 
+              src="https://res.cloudinary.com/dbmokwazr/image/upload/nbhqewrgoxwj3thqxxhn" 
+              alt="Logo" 
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+          <button 
+            onClick={() => navigate('/notifications')} 
+            className="w-10 h-10 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-sm relative group active:scale-95 transition-transform border border-gray-100 dark:border-gray-800"
+          >
+            <Bell size={20} className="text-gray-700 dark:text-gray-300 group-hover:rotate-12 transition-transform" />
+            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse" />
+          </button>
+        </div>
       </header>
 
       {/* 2. "Welcoming" Card Banner with 3D Illustration Look */}
