@@ -30,20 +30,20 @@ export default function Login() {
             animate={{ 
               opacity: 1, 
               scale: 1,
-              x: [-1, 1, -1, 1, 0],
-              rotate: [-0.5, 0.5, -0.5, 0.5, 0]
+              x: [-2, 2, -2, 2, 0],
+              rotate: [-1, 1, -1, 1, 0]
             }}
             transition={{ 
               opacity: { duration: 0.5 },
               scale: { duration: 0.5 },
-              x: { repeat: Infinity, duration: 0.5, repeatDelay: 2 },
-              rotate: { repeat: Infinity, duration: 0.5, repeatDelay: 2 }
+              x: { repeat: Infinity, duration: 0.1, repeatDelay: 2.5 },
+              rotate: { repeat: Infinity, duration: 0.1, repeatDelay: 2.5 }
             }}
             className="flex flex-col items-center gap-4"
           >
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-blue-100 overflow-hidden">
               <img 
-                src="https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=300&q=80" 
+                src="https://res.cloudinary.com/dbmokwazr/image/upload/nbhqewrgoxwj3thqxxhn" 
                 alt="Welcome Logo" 
                 className="w-full h-full object-cover"
               />
@@ -86,18 +86,18 @@ export default function Login() {
           <div className="lg:hidden flex flex-col items-center gap-4 mb-8">
             <motion.div 
               animate={{ 
-                x: [-1, 1, -1, 1, 0],
-                rotate: [-0.5, 0.5, -0.5, 0.5, 0]
+                x: [-2, 2, -2, 2, 0],
+                rotate: [-1, 1, -1, 1, 0]
               }}
               transition={{ 
                 repeat: Infinity, 
-                duration: 0.5, 
-                repeatDelay: 2 
+                duration: 0.1, 
+                repeatDelay: 2.5 
               }}
               className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-600/20 overflow-hidden border-4 border-white"
             >
               <img 
-                src="https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=300&q=80" 
+                src="https://res.cloudinary.com/dbmokwazr/image/upload/nbhqewrgoxwj3thqxxhn" 
                 alt="Welcome Logo" 
                 className="w-full h-full object-cover"
               />
