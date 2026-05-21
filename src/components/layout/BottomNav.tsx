@@ -6,7 +6,6 @@ export default function BottomNav() {
     { to: '/profile', icon: User, label: 'الملف الشخصي' },
     { to: '/planner', icon: Calendar, label: 'الجدول' },
     { to: '/courses', icon: BookOpen, label: 'الدروس' },
-    { to: '/library', icon: Library, label: 'المكتبة' },
     { to: '/', icon: Home, label: 'الرئيسية' },
   ];
 

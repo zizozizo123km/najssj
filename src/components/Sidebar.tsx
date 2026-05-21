@@ -26,7 +26,6 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
     { name: 'مجموعات الدراسة', path: '/groups', icon: MessageSquare },
     { name: 'الأستاذ الافتراضي', path: '/ai', icon: Brain },
     { name: 'المنشورات', path: '/posts', icon: FileText },
-    { name: 'المكتبة', path: '/library', icon: Library },
     { name: 'ملاحظاتي', path: '/posts?filter=saved', icon: Bookmark },
     { name: 'محلل يوتيوب الذكي', path: '/youtube', icon: Youtube },
     { name: 'اختبارات', path: '/quiz', icon: BookOpen },

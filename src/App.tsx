@@ -11,7 +11,6 @@ import Login from './pages/Login';
 import StudyGroups from './pages/StudyGroups';
 import ChatRoom from './pages/ChatRoom';
 import Profile from './pages/Profile';
-import Library from './pages/Library';
 import Courses from './pages/Courses';
 import CourseSubject from './pages/CourseSubject';
 import PastExams from './pages/PastExams';
@@ -185,7 +184,6 @@ export default function App() {
                     <Route path="/groups" element={user ? <StudyGroups /> : <Navigate to="/login" />} />
                     <Route path="/groups/:groupId" element={user ? <ChatRoom /> : <Navigate to="/login" />} />
                     <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
-                    <Route path="/library" element={user ? <Library /> : <Navigate to="/login" />} />
                     <Route path="/courses" element={user ? <Courses /> : <Navigate to="/login" />} />
                     <Route path="/courses/:subjectName" element={user ? <CourseSubject /> : <Navigate to="/login" />} />
                     <Route path="/ai" element={user ? <VirtualTeacher /> : <Navigate to="/login" />} />

@@ -9,7 +9,6 @@ import EngagementTool from '../../components/admin/EngagementTool';
 import DeviceTokenList from '../../components/admin/DeviceTokenList';
 import ApiKeysForm from '../../components/admin/ApiKeysForm';
 import MaintenanceToggle from '../../components/admin/MaintenanceToggle';
-import BookUploadForm from '../../components/admin/BookUploadForm';
 import SummaryUploadForm from '../../components/admin/SummaryUploadForm';
 import { BookOpen, FileText } from 'lucide-react';
 
@@ -99,7 +98,6 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'students', label: 'الطلاب', icon: Users },
-    { id: 'books', label: 'المكتبة', icon: BookOpen },
     { id: 'summaries', label: 'الملخصات', icon: FileText },
     { id: 'notifications', label: 'الإشعارات', icon: Bell },
     { id: 'engagement', label: 'التحفيز', icon: Sparkles },
@@ -169,12 +167,6 @@ export default function AdminDashboard() {
         {activeTab === 'students' && (
           <div className="space-y-6">
             <StudentTable />
-          </div>
-        )}
-
-        {activeTab === 'books' && (
-          <div className="space-y-6">
-            <BookUploadForm />
           </div>
         )}
 
