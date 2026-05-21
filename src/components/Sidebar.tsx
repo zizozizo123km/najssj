@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { MessageSquare, Brain, FileText, Search, Home, X, BookOpen, Video, Youtube, Bookmark, User as UserIcon, Library, LogOut, MoreVertical, Calendar, Calculator } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, signOut } from '../lib/firebase';
@@ -55,27 +54,7 @@ export default function Sidebar({ isOpen, toggle }: { isOpen: boolean; toggle: (
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white p-6 flex flex-col transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static transition-transform duration-300 font-sans`}>
         <div className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-3">
-            <motion.div
-              animate={{ 
-                x: [-1, 1, -1, 1, 0],
-                rotate: [-0.5, 0.5, -0.5, 0.5, 0]
-              }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 0.1, 
-                repeatDelay: 2.5 
-              }}
-              className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border border-white/20 overflow-hidden"
-            >
-              <img 
-                src="https://res.cloudinary.com/dbmokwazr/image/upload/nbhqewrgoxwj3thqxxhn" 
-                alt="Bac DZ AI Logo" 
-                className="w-full h-full object-cover"
-              />
-            </motion.div>
-            <h1 className="text-xl font-black text-white tracking-tight">Bac DZ AI</h1>
-          </div>
+          <h1 className="text-2xl font-bold text-blue-400">Bac DZ AI</h1>
           <button onClick={toggle} className="md:hidden p-2 hover:bg-gray-800 rounded"><X /></button>
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto scrollbar-none">
