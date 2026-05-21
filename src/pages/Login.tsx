@@ -26,12 +26,27 @@ export default function Login() {
         
         <div className="relative z-10 max-w-lg space-y-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1,
+              x: [-1, 1, -1, 1, 0],
+              rotate: [-0.5, 0.5, -0.5, 0.5, 0]
+            }}
+            transition={{ 
+              opacity: { duration: 0.5 },
+              scale: { duration: 0.5 },
+              x: { repeat: Infinity, duration: 0.5, repeatDelay: 2 },
+              rotate: { repeat: Infinity, duration: 0.5, repeatDelay: 2 }
+            }}
+            className="flex flex-col items-center gap-4"
           >
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-xl">
-              <GraduationCap size={40} />
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-blue-100 overflow-hidden">
+              <img 
+                src="https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=300&q=80" 
+                alt="Welcome Logo" 
+                className="w-full h-full object-cover"
+              />
             </div>
             <h1 className="text-4xl font-black tracking-tight">Bac DZ AI</h1>
           </motion.div>
@@ -69,9 +84,24 @@ export default function Login() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden flex flex-col items-center gap-4 mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-600/20">
-              <GraduationCap size={40} />
-            </div>
+            <motion.div 
+              animate={{ 
+                x: [-1, 1, -1, 1, 0],
+                rotate: [-0.5, 0.5, -0.5, 0.5, 0]
+              }}
+              transition={{ 
+                repeat: Infinity, 
+                duration: 0.5, 
+                repeatDelay: 2 
+              }}
+              className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-600/20 overflow-hidden border-4 border-white"
+            >
+              <img 
+                src="https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=300&q=80" 
+                alt="Welcome Logo" 
+                className="w-full h-full object-cover"
+              />
+            </motion.div>
             <h1 className="text-2xl font-black text-gray-900">Bac DZ AI</h1>
           </div>
 
