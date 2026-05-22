@@ -126,9 +126,26 @@ export default function YouTubeVideoAnalyzer() {
       }
       
       try {
-        setAnalysis(JSON.parse(cleanJson));
+        const parsed = JSON.parse(cleanJson);
+        setAnalysis({
+          summary: parsed.summary || '',
+          clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
+          boardExplanation: parsed.boardExplanation || '',
+          keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+          importantNotes: Array.isArray(parsed.importantNotes) ? parsed.importantNotes : [],
+          timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : []
+        });
       } catch (e) {
-        setAnalysis(JSON.parse(responseText));
+        console.warn("Retrying with responseText due to secondary JSON parse failure");
+        const parsed = JSON.parse(responseText);
+        setAnalysis({
+          summary: parsed.summary || '',
+          clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
+          boardExplanation: parsed.boardExplanation || '',
+          keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+          importantNotes: Array.isArray(parsed.importantNotes) ? parsed.importantNotes : [],
+          timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : []
+        });
       }
     } catch (error: any) {
       console.error("Analysis error:", error);

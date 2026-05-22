@@ -80,12 +80,15 @@ export default function VideoSummary({ summary, onSave, onRate, rating }: VideoS
           <h3>توضيحات إضافية</h3>
         </div>
         <ul className="space-y-2">
-          {summary.clarifications.map((clarification, i) => (
+          {summary.clarifications?.map((clarification, i) => (
             <li key={i} className="flex items-start gap-2 bg-purple-50/50 dark:bg-purple-900/20 p-3 rounded-lg text-sm text-gray-800 dark:text-gray-300 border border-purple-100 dark:border-purple-900/30">
               <span className="bg-purple-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 font-bold">{i + 1}</span>
               {clarification}
             </li>
           ))}
+          {(!summary.clarifications || summary.clarifications.length === 0) && (
+            <p className="text-xs text-gray-400 font-bold italic">لا توجد توضيحات إضافية متوفرة لهذا الجزء.</p>
+          )}
         </ul>
       </section>
 
@@ -96,12 +99,15 @@ export default function VideoSummary({ summary, onSave, onRate, rating }: VideoS
           <h3>النقاط الأساسية</h3>
         </div>
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {summary.keyPoints.map((point, i) => (
+          {summary.keyPoints?.map((point, i) => (
             <li key={i} className="flex items-start gap-2 bg-blue-50/50 dark:bg-blue-900/20 p-3 rounded-lg text-sm text-gray-800 dark:text-gray-300 border border-blue-100 dark:border-blue-900/30">
               <span className="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 font-bold">{i + 1}</span>
               {point}
             </li>
           ))}
+          {(!summary.keyPoints || summary.keyPoints.length === 0) && (
+            <p className="text-xs text-gray-400 font-bold italic">لا توجد نقاط أساسية متوفرة.</p>
+          )}
         </ul>
       </section>
 
@@ -112,12 +118,15 @@ export default function VideoSummary({ summary, onSave, onRate, rating }: VideoS
           <h3>ملاحظات هامة للبكالوريا</h3>
         </div>
         <div className="bg-red-50 dark:bg-red-900/20 border-r-4 border-red-500 p-4 rounded-l-xl space-y-2">
-          {summary.importantNotes.map((note, i) => (
+          {summary.importantNotes?.map((note, i) => (
             <p key={i} className="text-sm text-red-800 dark:text-red-400 font-medium flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0" />
               {note}
             </p>
           ))}
+          {(!summary.importantNotes || summary.importantNotes.length === 0) && (
+            <p className="text-xs text-gray-400 font-bold italic">لا توجد ملاحظات إضافية.</p>
+          )}
         </div>
       </section>
 

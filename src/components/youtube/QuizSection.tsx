@@ -24,6 +24,16 @@ export default function QuizSection({ questions, onRestart }: QuizSectionProps) 
   const [quizComplete, setQuizComplete] = useState(false);
   const [shortAnswer, setShortAnswer] = useState('');
 
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-xl border border-gray-100 dark:border-gray-800 text-center space-y-4">
+        <HelpCircle size={48} className="text-gray-300 mx-auto" />
+        <p className="text-gray-500 font-bold">عذراً، لم تتوفر أسئلة لهذا الفيديو. حاول مرة أخرى لاحقاً.</p>
+        <button onClick={onRestart} className="text-blue-600 font-bold hover:underline">العودة للتحليل</button>
+      </div>
+    );
+  }
+
   const currentQuestion = questions[currentIdx];
 
   const handleAnswer = (answer: string) => {
