@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, BookOpen } from 'lucide-react';
+import { Phone, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, BookOpen } from 'lucide-react';
 import { auth, db, doc, setDoc, serverTimestamp } from '../../lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { BAC_BRANCHES } from '../../data/baccalaureate';
@@ -13,6 +13,8 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const [isRegistering, setIsRegistering] = useState(false);
+  const [method, setMethod] = useState<'phone' | 'email'>('phone');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
@@ -29,14 +31,28 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     setError('');
     setSuccessMessage('');
 
+    // identifier for Firebase Auth
+    const identifier = method === 'phone' 
+      ? `${phone.trim()}@bacdz.ai` 
+      : email.trim();
+
     try {
       if (isRegistering) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (method === 'phone' && phone.length < 9) {
+          throw new Error('رقم الهاتف غير صحيح.');
+        }
+        if (method === 'email' && !email.includes('@')) {
+          throw new Error('البريد الإلكتروني غير صحيح.');
+        }
+
+        const userCredential = await createUserWithEmailAndPassword(auth, identifier, password);
         const user = userCredential.user;
         
         // Create profile in Firestore
         await setDoc(doc(db, 'profiles', user.uid), {
           full_name: fullName,
+          phone: method === 'phone' ? phone : null,
+          email: method === 'email' ? email : null,
           branch: branch,
           role: 'student',
           points: 0,
@@ -45,23 +61,26 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         
         onSuccess();
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, identifier, password);
         onSuccess();
       }
       
       if (rememberMe) {
-        localStorage.setItem('rememberedUser', email);
+        localStorage.setItem('rememberedUser', method === 'phone' ? phone : email);
       } else {
         localStorage.removeItem('rememberedUser');
       }
     } catch (err: any) {
       console.error(err);
       let message = 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
-      if (err.code === 'auth/email-already-in-use') message = 'البريد الإلكتروني مستخدم بالفعل.';
+      if (err.code === 'auth/email-already-in-use') {
+        message = method === 'phone' ? 'رقم الهاتف مستخدم بالفعل.' : 'البريد الإلكتروني مستخدم بالفعل.';
+      }
       if (err.code === 'auth/weak-password') message = 'كلمة المرور ضعيفة جداً.';
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        message = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+        message = method === 'phone' ? 'رقم الهاتف أو كلمة المرور غير صحيحة.' : 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
       }
+      if (err.message === 'رقم الهاتف غير صحيح.' || err.message === 'البريد الإلكتروني غير صحيح.') message = err.message;
       setError(message);
     } finally {
       setLoading(false);
@@ -69,13 +88,19 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
   };
 
   const handleForgotPassword = async () => {
+    if (method === 'phone') {
+      setError('يرجى التواصل مع الدعم الفني لاستعادة كلمة المرور عبر رقم الهاتف.');
+      return;
+    }
+
     if (!email) {
       setError('يرجى إدخال البريد الإلكتروني أولاً.');
       return;
     }
+
     try {
       await sendPasswordResetEmail(auth, email);
-      alert('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
+      setSuccessMessage('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.');
     } catch (err: any) {
       setError('فشل إرسال رابط إعادة التعيين.');
     }
@@ -99,6 +124,32 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
         />
       </div>
 
+      {/* Tabs for Login Method */}
+      <div className="flex p-1.5 bg-[#F1F5F9] rounded-2xl">
+        <button
+          onClick={() => setMethod('phone')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-all ${
+            method === 'phone' 
+              ? 'bg-white text-blue-600 shadow-sm' 
+              : 'text-[#64748B] hover:text-[#1E293B]'
+          }`}
+        >
+          <Phone size={16} />
+          رقم الهاتف
+        </button>
+        <button
+          onClick={() => setMethod('email')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-all ${
+            method === 'email' 
+              ? 'bg-white text-blue-600 shadow-sm' 
+              : 'text-[#64748B] hover:text-[#1E293B]'
+          }`}
+        >
+          <Mail size={16} />
+          Gmail
+        </button>
+      </div>
+
       <ErrorMessage message={error} />
       
       {successMessage && (
@@ -108,25 +159,44 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Email Field */}
+        {/* Identifier Field */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-black text-[#1E293B]">
-               البريد الإلكتروني
+               {method === 'phone' ? 'رقم الهاتف' : 'البريد الإلكتروني'}
             </div>
-            <Mail size={16} className="text-[#3B82F6] opacity-40" />
+            {method === 'phone' ? (
+              <Phone size={16} className="text-[#3B82F6] opacity-40" />
+            ) : (
+              <Mail size={16} className="text-[#3B82F6] opacity-40" />
+            )}
           </div>
           <div className="relative">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@email.com"
-              className="w-full bg-[#F8FAFC] p-4 pr-12 rounded-2xl border border-transparent focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-right text-sm placeholder:text-gray-400 font-medium"
-              required
-            />
+            {method === 'phone' ? (
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="0XXXXXXXXX"
+                className="w-full bg-[#F8FAFC] p-4 pr-12 rounded-2xl border border-transparent focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-right text-sm placeholder:text-gray-400 font-medium"
+                required
+              />
+            ) : (
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@gmail.com"
+                className="w-full bg-[#F8FAFC] p-4 pr-12 rounded-2xl border border-transparent focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-right text-sm placeholder:text-gray-400 font-medium"
+                required
+              />
+            )}
             <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-xl shadow-sm">
-              <Mail size={16} className="text-blue-600" />
+              {method === 'phone' ? (
+                <Phone size={16} className="text-blue-600" />
+              ) : (
+                <Mail size={16} className="text-blue-600" />
+              )}
             </div>
           </div>
         </div>

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { User, Mail, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles, Target } from 'lucide-react';
+import { User, Phone, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles, Target } from 'lucide-react';
 import AvatarGallery from './AvatarGallery';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../../data/baccalaureate';
 
 interface SettingsFormProps {
   user: {
     displayName: string | null;
-    email: string | null;
+    phone: string | null;
     photoURL: string | null;
     avatarId?: string | null;
     branch: string;
@@ -21,7 +21,7 @@ interface SettingsFormProps {
 export default function SettingsForm({ user, onSave, onCancel }: SettingsFormProps) {
   const [formData, setFormData] = useState({
     displayName: user.displayName || '',
-    email: user.email || '',
+    phone: user.phone || '',
     photoURL: user.photoURL || '',
     avatarId: user.avatarId || '',
     branch: user.branch || BAC_BRANCHES[0].id,
@@ -81,12 +81,12 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <Mail size={16} className="text-blue-500" /> البريد الإلكتروني
+              <Phone size={16} className="text-blue-500" /> رقم الهاتف
             </label>
             <input 
-              type="email" 
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              type="tel" 
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
               className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all"
             />
           </div>

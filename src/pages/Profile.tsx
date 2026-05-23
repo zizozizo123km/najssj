@@ -15,7 +15,7 @@ import SettingsForm from '../components/profile/SettingsForm';
 
 interface UserProfile {
   displayName: string | null;
-  email: string | null;
+  phone: string | null;
   photoURL: string | null;
   avatarId?: string | null;
   branch: string;
@@ -89,7 +89,7 @@ export default function Profile() {
 
         setUser({
           displayName: data.full_name || auth.currentUser?.displayName || 'مستخدم جديد',
-          email: auth.currentUser?.email || null,
+          phone: data.phone || auth.currentUser?.email?.split('@')[0] || null,
           photoURL: data.avatar_url || auth.currentUser?.photoURL || null,
           avatarId: data.avatar_id || null,
           branch: data.branch || 'sciences',
@@ -108,7 +108,7 @@ export default function Profile() {
       } else {
         setUser({
           displayName: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'مستخدم جديد',
-          email: auth.currentUser?.email || null,
+          phone: auth.currentUser?.email?.split('@')[0] || null,
           photoURL: auth.currentUser?.photoURL || null,
           avatarId: null,
           branch: 'sciences',

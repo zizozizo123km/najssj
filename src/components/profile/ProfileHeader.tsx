@@ -1,11 +1,11 @@
-import { User, Mail, GraduationCap, BookOpen, Edit2 } from 'lucide-react';
+import { User, Phone, GraduationCap, BookOpen, Edit2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { BAC_BRANCHES } from '../../data/baccalaureate';
 
 interface ProfileHeaderProps {
   user: {
     displayName: string | null;
-    email: string | null;
+    phone: string | null;
     photoURL: string | null;
     branch: string;
     favoriteSubjects: string[];
@@ -43,7 +43,7 @@ export default function ProfileHeader({ user, onEdit }: ProfileHeaderProps) {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.displayName || 'مستخدم جديد'}</h1>
           <div className="flex flex-wrap justify-center md:justify-start gap-3 text-sm text-gray-500 dark:text-gray-400">
             <span className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-full border border-gray-100 dark:border-gray-700">
-              <Mail size={14} className="text-blue-500" /> {user.email}
+              <Phone size={14} className="text-blue-500" /> {user.phone}
             </span>
             <span className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 px-3 py-1 rounded-full border border-gray-100 dark:border-gray-700">
               <GraduationCap size={14} className="text-purple-500" /> {BAC_BRANCHES.find(b => b.id === user.branch)?.name || user.branch}
