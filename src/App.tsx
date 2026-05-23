@@ -8,8 +8,6 @@ import Quiz from './pages/Quiz';
 import Posts from './pages/Posts';
 import YouTubeVideoAnalyzer from './pages/YouTubeVideoAnalyzer';
 import Login from './pages/Login';
-import StudyGroups from './pages/StudyGroups';
-import ChatRoom from './pages/ChatRoom';
 import Profile from './pages/Profile';
 import Courses from './pages/Courses';
 import CourseSubject from './pages/CourseSubject';
@@ -181,8 +179,6 @@ export default function App() {
                   <Routes>
                     <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
                     <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
-                    <Route path="/groups" element={user ? <StudyGroups /> : <Navigate to="/login" />} />
-                    <Route path="/groups/:groupId" element={user ? <ChatRoom /> : <Navigate to="/login" />} />
                     <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
                     <Route path="/courses" element={user ? <Courses /> : <Navigate to="/login" />} />
                     <Route path="/courses/:subjectName" element={user ? <CourseSubject /> : <Navigate to="/login" />} />

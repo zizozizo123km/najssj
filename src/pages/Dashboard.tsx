@@ -11,6 +11,8 @@ import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
 import ProfilePreview from '../components/profile/ProfilePreview';
 
+import BacCountdown from '../components/BacCountdown';
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [feed, setFeed] = useState<any[]>([]);
@@ -191,38 +193,9 @@ export default function Dashboard() {
         </button>
       </header>
 
-      {/* 2. "Welcoming" Card Banner with 3D Illustration Look */}
+      {/* 2. Baccalaureate Countdown Timer */}
       <section className="px-5 my-4">
-        <div className="bg-gradient-to-r from-teal-400 to-blue-600 rounded-3xl p-5 text-white shadow-[0_12px_24px_rgba(45,212,191,0.2)] dark:shadow-[0_12px_24px_rgba(30,58,138,0.4)] relative overflow-hidden flex items-center justify-between">
-          <div className="absolute right-0 top-0 bottom-0 left-1/3 bg-gradient-to-l from-transparent to-white/10 pointer-events-none" />
-          
-          <div className="space-y-2 relative z-10 max-w-[65%]">
-            <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-lg text-[10px] uppercase tracking-widest font-black text-white">
-              Welcoming
-            </span>
-            <h1 className="text-xl font-black leading-tight">تحدي المذاكرة!</h1>
-            <p className="text-xs text-teal-500 bg-white font-extrabold px-3 py-1 rounded-full inline-block shadow-sm">
-              التحديات بينك على التسمين، الإهلاك
-            </p>
-          </div>
-
-          <div className="relative z-10 w-24 h-24 flex items-center justify-center">
-            {/* Cute animated study graduation badge indicating a 3D child with animation */}
-            <motion.div 
-              animate={{ y: [0, -6, 0] }}
-              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-              className="relative"
-            >
-              <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-full absolute -inset-2 scale-105" />
-              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-teal-300">
-                <span className="text-3xl">🧑‍🎓</span>
-              </div>
-              <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-white rounded-full p-1 text-[10px] animate-bounce shadow">
-                ⚡
-              </div>
-            </motion.div>
-          </div>
-        </div>
+        <BacCountdown />
       </section>
 
       {/* 3. "لوحة الشرف" Honor Roll (Leaderboard horizontally) */}
