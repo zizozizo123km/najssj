@@ -15,8 +15,6 @@ import {
   FileText,
   Zap
 } from 'lucide-react';
-import { Type } from "@google/genai";
-import { getGeminiConfig } from '../lib/gemini';
 import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where, updateDoc } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_CHAPTERS, BAC_BRANCHES } from '../data/baccalaureate';
 
@@ -91,22 +89,24 @@ export default function Quiz() {
     if (mode === 'challenge') numQuestions = 10;
 
     try {
-      const { client: ai, model } = await getGeminiConfig();
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: `Generate ${numQuestions} multiple choice questions for Baccalaureate level in Algeria for chapter: ${selectedChapter.name} in ${selectedSubject.name}. 
+      const prompt = `Generate ${numQuestions} multiple choice questions for Baccalaureate level in Algeria for chapter: ${selectedChapter.name} in ${selectedSubject.name}. 
         Return ONLY a JSON array of objects with:
         - question (string)
         - options (array of 4 strings)
         - correctAnswer (string)
         - explanation (string: brief explanation)
-        `,
-        config: {
-          responseMimeType: "application/json",
-        },
+        `;
+
+      const aiResponse = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
+
+      if (!aiResponse.ok) throw new Error('Failed to generate quiz');
       
-      const responseText = response.text || "[]";
+      const aiData = await aiResponse.json();
+      const responseText = aiData.text || "[]";
       let cleanJson = responseText;
       const firstBracket = responseText.indexOf('[');
       const lastBracket = responseText.lastIndexOf(']');
@@ -236,12 +236,16 @@ export default function Quiz() {
       
       Please explain my mistakes simply in Arabic and give me tips to improve.`;
 
-      const { client: ai, model } = await getGeminiConfig();
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
+      const aiResponse = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
-      setExplanation(response.text || "عذراً، لم أتمكن من توليد الشرح.");
+
+      if (!aiResponse.ok) throw new Error('Failed to explain mistakes');
+      
+      const aiData = await aiResponse.json();
+      setExplanation(aiData.text || "عذراً، لم أتمكن من توليد الشرح.");
     } catch (error) {
       console.error(error);
       setExplanation("حدث خطأ أثناء محاولة شرح الأخطاء.");

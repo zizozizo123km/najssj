@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, BookOpen, Save, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
-import { getGeminiConfig } from '../lib/gemini';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../data/baccalaureate';
 import { auth, db, doc, onSnapshot, updateDoc, serverTimestamp } from '../lib/firebase';
 
@@ -52,7 +51,6 @@ export default function StudyPlanner() {
   const generatePlan = async () => {
     setLoading(true);
     try {
-      const { client: ai, model } = await getGeminiConfig();
       const branchName = BAC_BRANCHES.find(b => b.id === branch)?.name;
       const prompt = `أنت خبير في تنظيم الوقت والدراسة لطلاب البكالوريا في الجزائر.
         أنشئ جدول دراسة مخصص للطالب بناءً على المعلومات التالية:
@@ -68,13 +66,16 @@ export default function StudyPlanner() {
         2. اجعل الفترات الدراسية تتخللها فترات راحة قصيرة.
         3. يجب أن يكون الرد بتنسيق JSON فقط كصفوفة من الكائنات بالمفاتيح التالية: day (اسم اليوم بالعربية), slots (مصفوفة من الكائنات تحتوي على time, subject, topic باللغة العربية).`;
 
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
 
-      setPlan(JSON.parse(response.text || '[]'));
+      if (!response.ok) throw new Error('Failed to generate plan');
+      
+      const data = await response.json();
+      setPlan(JSON.parse(data.text || '[]'));
     } catch (error) {
       console.error("Plan generation error:", error);
     } finally {
