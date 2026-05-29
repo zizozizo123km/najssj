@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, Sparkles, BrainCircuit, RotateCcw, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getGeminiConfig } from '../lib/gemini';
+import { getApiKey } from '../lib/apiKeys';
 import VideoList from '../components/youtube/VideoList';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import VideoSummary from '../components/youtube/VideoSummary';
@@ -40,11 +42,16 @@ export default function YouTubeVideoAnalyzer() {
     setLoading(true);
     setError(null);
     try {
+      const apiKey = await getApiKey('youtube', 'api_key');
+      if (!apiKey) {
+        throw new Error('مفتاح YouTube API غير متوفر. يرجى إضافته من لوحة التحكم.');
+      }
+
       const finalQuery = filter === 'الكل' 
         ? activeQuery + " بكالوريا الجزائر" 
         : `درس ${filter} ${activeQuery} بكالوريا الجزائر`;
         
-      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(finalQuery)}`);
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(finalQuery)}&key=${apiKey}&type=video&maxResults=5`);
       const data = await res.json();
       
       if (data.error) {
@@ -85,6 +92,7 @@ export default function YouTubeVideoAnalyzer() {
     setError(null);
 
     try {
+      const { client: ai, model } = await getGeminiConfig();
       const prompt = `Analyze this YouTube video for a Baccalaureate student in Algeria.
         IMPORTANT: Focus strictly on the academic content of the lesson. Provide a clear, structured, and concise summary of the lesson content itself. Avoid narrative style or mimicking a teacher's speech. Use technical terms and educational content accurate for the Algerian Baccalaureate.
         
@@ -102,16 +110,13 @@ export default function YouTubeVideoAnalyzer() {
         
         Return as JSON with keys: summary, clarifications, boardExplanation, keyPoints, importantNotes, timestamps.`;
 
-      const aiResponse = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
       });
 
-      if (!aiResponse.ok) throw new Error('Failed to analyze video');
-      
-      const aiData = await aiResponse.json();
-      const responseText = aiData.text || '{}';
+      const responseText = response.text || '{}';
       const firstBrace = responseText.indexOf('{');
       const lastBrace = responseText.lastIndexOf('}');
       
@@ -183,16 +188,14 @@ export default function YouTubeVideoAnalyzer() {
         
         Return ONLY a JSON array of objects with keys: id, type ('mcq', 'true-false', 'short-answer'), question, options (for mcq), correctAnswer, explanation. Do not include any other text.`;
 
-      const aiResponse = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+      const { client: ai, model } = await getGeminiConfig();
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
       });
 
-      if (!aiResponse.ok) throw new Error('Failed to generate quiz');
-      
-      const aiData = await aiResponse.json();
-      const responseText = aiData.text || '[]';
+      const responseText = response.text || '[]';
       const firstBracket = responseText.indexOf('[');
       const lastBracket = responseText.lastIndexOf(']');
       

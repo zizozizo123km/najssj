@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Image as ImageIcon, Sparkles, BookOpen, HelpCircle, Save, Trash2, Loader2, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getGeminiConfig } from '../lib/gemini';
 import MessageBubble from '../components/teacher/MessageBubble';
 import TeacherAvatar from '../components/teacher/TeacherAvatar';
 import { auth, db, doc, onSnapshot } from '../lib/firebase';
@@ -111,13 +112,16 @@ export default function VirtualTeacher() {
     // Update usage count
     const newCount = dailyUsage.date === today ? dailyUsage.count + 1 : 1;
     localStorage.setItem('ai_usage', JSON.stringify({ date: today, count: newCount }));
-    setLoading(true);
 
     try {
+      const { client: ai, model } = await getGeminiConfig();
       const branchName = BAC_BRANCHES.find(b => b.id === userProfile?.branch)?.name || 'علوم تجريبية';
       const studentName = userProfile?.full_name || 'تلميذي العزيز';
 
-      const systemInstruction = `أنت "الأستاذ الافتراضي" (Virtual Teacher)، خبير في المناهج التعليمية الجزائرية للبكالوريا. 
+      const chat = ai.chats.create({
+        model: model,
+        config: {
+          systemInstruction: `أنت "الأستاذ الافتراضي" (Virtual Teacher)، خبير في المناهج التعليمية الجزائرية للبكالوريا. 
           أنت تخاطب الطالب "${studentName}" من شعبة "${branchName}".
           مهمتك هي مساعدة الطلاب في فهم الدروس، حل التمارين خطوة بخطوة، وتقديم ملخصات واختبارات سريعة.
           المواد المتاحة للطالب حالياً: ${availableSubjects.map(s => s.name).join(', ')}.
@@ -125,26 +129,32 @@ export default function VirtualTeacher() {
           هام جداً: تكلم بلهجة جزائرية (دارجة) مفهومة ومحببة للطلاب لتكون قريباً منهم، لكن حافظ على دقة المصطلحات العلمية والتقنية.
           عند حل التمارين، لا تعطي الحل مباشرة، بل اشرح الخطوات والقواعد المستخدمة.
           المادة الحالية المختارة: ${selectedSubject}.
-          قيد هام: يجب ألا يتجاوز ردك 50 كلمة كحد أقصى.`;
-
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          systemInstruction,
-          selectedSubject
-        })
+          قيد هام: يجب ألا يتجاوز ردك 50 كلمة كحد أقصى.`
+        }
       });
 
-      if (!response.ok) throw new Error('Failed to get response from server');
-      
-      const data = await response.json();
+      let response;
+      if (userMessage.image) {
+        const base64Data = userMessage.image.split(',')[1];
+        response = await ai.models.generateContent({
+          model: model,
+          contents: [
+            {
+              parts: [
+                { text: textToSend || "حل هذا التمرين من فضلك" },
+                { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+              ]
+            }
+          ]
+        });
+      } else {
+        response = await chat.sendMessage({ message: textToSend });
+      }
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: data.text || 'عذراً، حدث خطأ في معالجة طلبك.',
+        text: response.text || 'عذراً، حدث خطأ في معالجة طلبك.',
         timestamp: new Date()
       };
 

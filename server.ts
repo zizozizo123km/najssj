@@ -3,7 +3,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import admin from "firebase-admin";
-import { GoogleGenAI } from "@google/genai";
 // @ts-ignore
 import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
 
@@ -31,41 +30,6 @@ async function getYouTubeApiKey(): Promise<string | null> {
     // Silent failure, falling back to hardcoded key
   }
   return hardcodedKey;
-}
-
-// Gemini Helper
-async function getGeminiConfig() {
-  try {
-    const doc = await db.collection("admin_settings").doc("api_keys").get();
-    if (doc.exists) {
-      const settings = doc.data()?.settings;
-      if (settings?.gemini?.length > 0) {
-        let activeIndex = settings.active_index || 0;
-        if (activeIndex >= settings.gemini.length) activeIndex = 0;
-        const selected = settings.gemini[activeIndex];
-        return {
-          apiKey: selected.api_key,
-          model: selected.model_name || "gemini-2.0-flash",
-          activeIndex,
-          allSettings: settings
-        };
-      }
-    }
-  } catch (error) {
-    console.error("Error fetching Gemini config:", error);
-  }
-  
-  // Fallback to Env Var
-  if (process.env.GEMINI_API_KEY) {
-    return {
-      apiKey: process.env.GEMINI_API_KEY,
-      model: "gemini-2.0-flash",
-      activeIndex: 0,
-      allSettings: null
-    };
-  }
-  
-  throw new Error("Gemini API key is missing.");
 }
 
 async function startServer() {
@@ -177,66 +141,6 @@ async function startServer() {
         details: error?.message || String(error),
         code: error?.code
       });
-    }
-  });
-
-  // Gemini AI Chat API
-  app.post("/api/ai/chat", async (req, res) => {
-    const { messages, systemInstruction, selectedSubject } = req.body;
-    try {
-      const config = await getGeminiConfig();
-      const ai = new GoogleGenAI({ 
-        apiKey: config.apiKey,
-        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-      });
-
-      const chat = ai.chats.create({
-        model: config.model,
-        config: { systemInstruction }
-      });
-
-      // Send only the last message for now, or handle history
-      const lastMessage = messages[messages.length - 1];
-      const result = await chat.sendMessage({ message: lastMessage.text });
-      
-      res.json({ text: result.text });
-    } catch (error: any) {
-      console.error("AI Chat Error:", error);
-      res.status(500).json({ error: error.message || "AI Error" });
-    }
-  });
-
-  // Gemini AI Analysis API (for YouTube/Images)
-  app.post("/api/ai/analyze", async (req, res) => {
-    const { prompt, imageBase64 } = req.body;
-    try {
-      const config = await getGeminiConfig();
-      const ai = new GoogleGenAI({ 
-        apiKey: config.apiKey,
-        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-      });
-
-      let contents: any;
-      if (imageBase64) {
-        contents = {
-          parts: [
-            { text: prompt || "تحليل هذه الصورة" },
-            { inlineData: { data: imageBase64, mimeType: "image/jpeg" } }
-          ]
-        };
-      } else {
-        contents = prompt;
-      }
-
-      const result = await ai.models.generateContent({
-        model: config.model,
-        contents: contents
-      });
-
-      res.json({ text: result.text });
-    } catch (error: any) {
-      console.error("AI Analysis Error:", error);
-      res.status(500).json({ error: error.message || "AI Error" });
     }
   });
 
