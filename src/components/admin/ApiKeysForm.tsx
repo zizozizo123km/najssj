@@ -6,6 +6,7 @@ import { Plus, Trash2 } from 'lucide-react';
 const API_TYPES = [
   { id: 'youtube', name: 'YouTube API', fields: ['api_key', 'channel_id', 'region', 'notes'] },
   { id: 'gemini', name: 'Gemini API', fields: ['api_key', 'model_name', 'region', 'notes'] },
+  { id: 'openrouter', name: 'OpenRouter API (Fallback)', fields: ['api_key', 'model_name', 'notes'] },
   { id: 'cloudinary', name: 'Cloudinary API', fields: ['cloudinary_url', 'upload_preset', 'cloud_name', 'notes'] },
   { id: 'secondary_db', name: 'قاعدة بيانات إضافية', fields: ['db_host', 'db_user', 'db_password', 'db_name'] }
 ];
@@ -14,6 +15,7 @@ export default function ApiKeysForm() {
   const [keys, setKeys] = useState<any>({
     youtube: [{ api_key: '', channel_id: '', region: '', notes: '' }],
     gemini: [{ api_key: '', model_name: '', region: '', notes: '' }],
+    openrouter: [{ api_key: '', model_name: '', notes: '' }],
     cloudinary: [{ 
       cloudinary_url: 'cloudinary://946433472178741:uWZ5l-dv0mTBIwr0AO6C9Q26xMY@dbmokwazr', 
       upload_preset: 'prest', 
@@ -92,6 +94,39 @@ export default function ApiKeysForm() {
     }
   };
 
+  const testOpenRouter = async (index: number) => {
+    setTestStatus({ loading: true, message: 'جاري التجربة...', success: null });
+    try {
+      const settings = keys.openrouter?.[index];
+      if (!settings?.api_key) {
+        throw new Error('يرجى إدخال مفتاح API أولاً');
+      }
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${settings.api_key}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": settings.model_name || "google/gemini-2.0-flash-exp:free",
+          "messages": [
+            {"role": "user", "content": "Say hello"}
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'فشل الاتصال بـ OpenRouter');
+      }
+
+      setTestStatus({ loading: false, message: 'تم الاتصال بـ OpenRouter بنجاح! ✅', success: true });
+    } catch (error: any) {
+      setTestStatus({ loading: false, message: `فشل الاتصال: ${error.message}`, success: false });
+    }
+  };
+
   const handleChange = (api: string, index: number, field: string, value: string) => {
     const newKeys = { ...keys };
     if (!newKeys[api]) newKeys[api] = [{}];
@@ -128,6 +163,14 @@ export default function ApiKeysForm() {
     'gemini-3.1-flash-lite-preview',
     'gemini-1.5-flash',
     'gemini-1.5-pro'
+  ];
+
+  const OPENROUTER_MODELS = [
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3.1-8b-instruct:free',
+    'meta-llama/llama-3.1-405b-instruct',
+    'anthropic/claude-3.5-sonnet',
+    'deepseek/deepseek-chat'
   ];
 
   if (loading) return <div className="text-center text-gray-400 py-8">جاري تحميل الإعدادات...</div>;
@@ -193,6 +236,44 @@ export default function ApiKeysForm() {
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold transition-colors disabled:opacity-50"
                       >
                         {testStatus.loading ? 'جاري التجربة...' : 'تجربة الاتصال'}
+                      </button>
+                      {testStatus.message && (
+                        <p className={`text-xs font-bold text-center ${testStatus.success ? 'text-green-400' : 'text-red-400'}`}>
+                          {testStatus.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {api.id === 'openrouter' && (
+                    <div className="mb-4 p-4 bg-gray-800 rounded-xl space-y-3 border border-gray-600">
+                      <label className="text-xs font-bold text-gray-400">اختر النموذج (أو اكتبه يدوياً)</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={keyItem.model_name || 'google/gemini-2.0-flash-exp:free'}
+                          onChange={(e) => handleChange('openrouter', index, 'model_name', e.target.value)}
+                          className="flex-1 bg-gray-900 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
+                        >
+                          {OPENROUTER_MODELS.map(model => (
+                            <option key={model} value={model}>{model}</option>
+                          ))}
+                          <option value="custom">-- كتابة نموذج مخصص --</option>
+                        </select>
+                        {keyItem.model_name === 'custom' && (
+                          <input 
+                            type="text"
+                            placeholder="model-id/name"
+                            className="flex-1 bg-gray-900 border border-gray-700 text-white rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-blue-500"
+                            onChange={(e) => handleChange('openrouter', index, 'model_name', e.target.value)}
+                          />
+                        )}
+                      </div>
+                      <button
+                        onClick={() => testOpenRouter(index)}
+                        disabled={testStatus.loading}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-bold transition-colors disabled:opacity-50"
+                      >
+                        {testStatus.loading ? 'جاري التجربة...' : 'تجربة اتصال OpenRouter'}
                       </button>
                       {testStatus.message && (
                         <p className={`text-xs font-bold text-center ${testStatus.success ? 'text-green-400' : 'text-red-400'}`}>

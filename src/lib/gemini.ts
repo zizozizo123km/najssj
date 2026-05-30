@@ -48,6 +48,7 @@ export async function askAI(prompt: string, context: string = "", retryCount: nu
     Your goal is to help them with their studies, explain lessons, solve exercises, and provide summaries.
     Always respond in Arabic (Algerian dialect or Modern Standard Arabic as appropriate) or French if the subject is taught in French.
     Be encouraging, clear, and concise.
+    ${context ? `Extra context provided: ${context}` : ''}
   `;
 
   try {
@@ -61,13 +62,53 @@ export async function askAI(prompt: string, context: string = "", retryCount: nu
 
     return response.text;
   } catch (error: any) {
-    // Check if it's a rate limit error (429)
-    if (error.status === 429 && retryCount < allSettings.gemini.length) {
+    // Check if it's a rate limit error (429) or other quota limits
+    if ((error.status === 429 || error.message?.includes('quota')) && retryCount < allSettings.gemini.length - 1) {
         console.warn(`Rate limit reached for key index ${activeIndex}, rotating...`);
         await rotateKey(activeIndex, allSettings);
         return askAI(prompt, context, retryCount + 1);
     }
-    console.error("AI Error:", error);
-    throw error;
+    
+    // If we've exhausted all Gemini keys or it's a critical error, try OpenRouter fallback
+    console.warn("Gemini Error or exhausted. Trying OpenRouter Fallback...", error.message);
+    try {
+        return await askOpenRouter(prompt, systemInstruction, allSettings);
+    } catch (fallbackError: any) {
+        console.error("Critical AI Failure (Gemini and OpenRouter):", fallbackError);
+        throw error; // Throw original error if fallback also fails
+    }
   }
+}
+
+async function askOpenRouter(prompt: string, systemInstruction: string, allSettings: any) {
+  const settings = allSettings.openrouter;
+  if (!settings || !Array.isArray(settings) || settings.length === 0 || !settings[0].api_key) {
+    throw new Error("OpenRouter settings missing or invalid.");
+  }
+
+  const selected = settings[0];
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${selected.api_key}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": window.location.origin, // Required by OpenRouter potentially
+      "X-Title": "Bac DZ App"
+    },
+    body: JSON.stringify({
+      "model": selected.model_name || "google/gemini-2.0-flash-exp:free",
+      "messages": [
+        {"role": "system", "content": systemInstruction},
+        {"role": "user", "content": prompt}
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || 'OpenRouter Fallback Failed');
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
