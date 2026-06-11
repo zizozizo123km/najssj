@@ -37,6 +37,20 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert("عذراً، يرجى اختيار صورة بصيغة JPG أو PNG أو WEBP فقط.");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 5 ميجابايت.");
+      return;
+    }
+
     setUploading(true);
     try {
       const url = await uploadFile(file, 'image');
