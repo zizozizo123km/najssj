@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { User, Phone, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles, Target } from 'lucide-react';
+import { User, Phone, Lock, Bell, BookOpen, Save, X, Image as ImageIcon, Sparkles, Target, Upload, Loader2 } from 'lucide-react';
 import AvatarGallery from './AvatarGallery';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../../data/baccalaureate';
+import { uploadFile } from '../../services/uploadService';
 
 interface SettingsFormProps {
   user: {
@@ -29,6 +30,24 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
     targetScore: user.targetScore || 15,
     notifications: true,
   });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadFile(file, 'image');
+      setFormData(prev => ({ ...prev, photoURL: url, avatarId: 'custom' }));
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert("حدث خطأ أثناء تحميل الصورة. يرجى المحاولة مرة أخرى.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const toggleSubject = (subject: string) => {
     setFormData(prev => ({
@@ -60,10 +79,44 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
           <label className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
             <ImageIcon size={16} className="text-blue-500" /> اختر صورة الملف الشخصي
           </label>
-          <AvatarGallery 
-            selectedAvatar={formData.photoURL} 
-            onSelect={(url, id) => setFormData({ ...formData, photoURL: url, avatarId: id })} 
-          />
+          
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-800/30">
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white dark:border-gray-800 shadow-sm bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                {formData.photoURL ? (
+                  <img src={formData.photoURL} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <User size={24} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-xs font-bold text-gray-600 dark:text-gray-400">يمكنك اختيار صورة من المعرض أو رفع صورة خاصة بك</p>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2 text-[10px] font-black bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-all text-blue-600 shadow-sm disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  <span>{uploading ? 'جاري التحميل...' : 'رفع صورة مخصصة'}</span>
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+              </div>
+            </div>
+
+            <AvatarGallery 
+              selectedAvatar={formData.photoURL} 
+              onSelect={(url, id) => setFormData({ ...formData, photoURL: url, avatarId: id })} 
+            />
+          </div>
         </div>
 
         {/* Basic Info */}
@@ -115,8 +168,11 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
               min="10"
               max="20"
               step="0.01"
-              value={formData.targetScore}
-              onChange={(e) => setFormData({ ...formData, targetScore: parseFloat(e.target.value) })}
+              value={formData.targetScore || ''}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setFormData({ ...formData, targetScore: isNaN(val) ? 0 : val });
+              }}
               className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all text-left"
               dir="ltr"
             />

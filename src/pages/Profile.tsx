@@ -181,8 +181,9 @@ export default function Profile() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen space-y-4 p-6 text-center">
         <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><HelpCircle size={32} /></div>
-        <h2 className="text-xl font-bold text-gray-900">حدث خطأ أثناء تحميل الملف</h2>
-        <button onClick={() => window.location.reload()} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">إعادة المحاولة</button>
+        <h2 className="text-xl font-black text-gray-900 dark:text-white">حدث خطأ</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-bold">{error || "فشل تحميل ملفك الشخصي"}</p>
+        <button onClick={() => { setError(null); window.location.reload(); }} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-blue-500/20 active:scale-95 transition-all">إعادة المحاولة</button>
       </div>
     );
   }
