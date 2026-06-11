@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Timer } from 'lucide-react';
 
-const BAC_DATE = new Date('2026-06-07T08:00:00'); // Estimated date for Bac 2026
+const BAC_DATE = new Date('2027-06-06T08:00:00'); // Estimated date for Bac 2027
 
 export default function BacCountdown() {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
