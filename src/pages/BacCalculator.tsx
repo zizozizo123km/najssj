@@ -147,7 +147,7 @@ export default function BacCalculator() {
         )}
       </header>
 
-      <main className="max-w-md mx-auto">
+      <main className="max-w-md md:max-w-4xl mx-auto">
         {view === 'home' ? (
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-2xl text-white shadow-md">

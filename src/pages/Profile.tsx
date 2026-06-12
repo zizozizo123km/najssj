@@ -189,7 +189,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 font-sans transition-colors relative antialiased" dir="rtl">
+    <div className="max-w-md md:max-w-4xl mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 md:pb-12 font-sans transition-colors relative antialiased px-4 md:px-8" dir="rtl">
       
       {/* Top Header Settings menu */}
       <header className="px-5 pt-6 pb-2 flex items-center justify-between">

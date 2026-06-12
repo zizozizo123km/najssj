@@ -108,7 +108,7 @@ export default function StudyPlanner() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 font-sans px-5 py-6 space-y-8" dir="rtl">
+    <div className="max-w-md md:max-w-4xl mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 md:pb-12 font-sans px-5 py-6 space-y-8" dir="rtl">
       <header className="text-center space-y-2">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center gap-2">
           <Calendar size={24} className="text-blue-600" />

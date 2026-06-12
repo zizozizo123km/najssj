@@ -196,7 +196,7 @@ export default function VirtualTeacher() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] md:h-full bg-[#F3F7FA] dark:bg-gray-950 font-sans max-w-xl mx-auto shadow-xl overflow-hidden border border-gray-150 dark:border-gray-900 pb-20 rounded-3xl" dir="rtl">
+    <div className="flex flex-col h-[calc(100vh-80px)] md:h-full bg-[#F3F7FA] dark:bg-gray-950 font-sans max-w-xl md:max-w-4xl mx-auto shadow-xl overflow-hidden border border-gray-150 dark:border-gray-900 pb-20 rounded-3xl" dir="rtl">
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
