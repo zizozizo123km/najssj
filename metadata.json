@@ -1,5 +1,8 @@
 {
   "name": "معدلي DZ",
   "description": "تطبيق تعليمي للطلاب الجزائريين (BAC & BEM) مع حساب المعدلات، ذكاء إصطناعي، ودروس.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -7,6 +7,7 @@ import VideoList from '../components/youtube/VideoList';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import VideoSummary from '../components/youtube/VideoSummary';
 import QuizSection from '../components/youtube/QuizSection';
+import { auth, db, collection, addDoc, serverTimestamp } from '../lib/firebase';
 
 interface Video {
   id: string;
@@ -127,25 +128,51 @@ export default function YouTubeVideoAnalyzer() {
       
       try {
         const parsed = JSON.parse(cleanJson);
-        setAnalysis({
+        const nextAnalysis = {
           summary: parsed.summary || '',
           clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
           boardExplanation: parsed.boardExplanation || '',
           keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
           importantNotes: Array.isArray(parsed.importantNotes) ? parsed.importantNotes : [],
           timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : []
-        });
+        };
+        setAnalysis(nextAnalysis);
+
+        // Automatically save to watched_videos collection in Firestore
+        if (auth.currentUser && selectedVideo) {
+          addDoc(collection(db, 'watched_videos'), {
+            user_id: auth.currentUser.uid,
+            video_id: selectedVideo.id,
+            title: selectedVideo.title,
+            channel: selectedVideo.channelTitle || '',
+            thumbnail: selectedVideo.thumbnail || '',
+            created_at: serverTimestamp()
+          }).catch(err => console.error("Error logging watched video:", err));
+        }
       } catch (e) {
         console.warn("Retrying with responseText due to secondary JSON parse failure");
         const parsed = JSON.parse(responseText);
-        setAnalysis({
+        const nextAnalysis = {
           summary: parsed.summary || '',
           clarifications: Array.isArray(parsed.clarifications) ? parsed.clarifications : [],
           boardExplanation: parsed.boardExplanation || '',
           keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
           importantNotes: Array.isArray(parsed.importantNotes) ? parsed.importantNotes : [],
           timestamps: Array.isArray(parsed.timestamps) ? parsed.timestamps : []
-        });
+        };
+        setAnalysis(nextAnalysis);
+
+        // Automatically save to watched_videos collection in Firestore
+        if (auth.currentUser && selectedVideo) {
+          addDoc(collection(db, 'watched_videos'), {
+            user_id: auth.currentUser.uid,
+            video_id: selectedVideo.id,
+            title: selectedVideo.title,
+            channel: selectedVideo.channelTitle || '',
+            thumbnail: selectedVideo.thumbnail || '',
+            created_at: serverTimestamp()
+          }).catch(err => console.error("Error logging watched video:", err));
+        }
       }
     } catch (error: any) {
       console.error("Analysis error:", error);
@@ -232,8 +259,25 @@ export default function YouTubeVideoAnalyzer() {
     }
   };
 
-  const handleSaveNotes = () => {
-    alert('تم حفظ التحليل في ملاحظاتك بنجاح!');
+  const handleSaveNotes = async () => {
+    if (!auth.currentUser || !selectedVideo || !analysis) {
+      alert('يرجى تسجيل الدخول أولاً لتتمكن من حفظ المخططات والملخصات.');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'summaries'), {
+        user_id: auth.currentUser.uid,
+        video_id: selectedVideo.id,
+        title: selectedVideo.title,
+        content: JSON.stringify(analysis),
+        subject: filter !== 'الكل' ? filter : 'عام',
+        created_at: serverTimestamp()
+      });
+      alert('تم حفظ ملخص الفيديو والتحليل في ملفك الشخصي وعلامات النشاط بنجاح! 💾✨');
+    } catch (e) {
+      console.error("Error saving summary to Firestore:", e);
+      alert('حدث خطأ أثناء حفظ التحليل في قاعدة البيانات.');
+    }
   };
 
   return (

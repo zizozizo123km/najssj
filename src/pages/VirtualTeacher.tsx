@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getGeminiConfig } from '../lib/gemini';
 import MessageBubble from '../components/teacher/MessageBubble';
 import TeacherAvatar from '../components/teacher/TeacherAvatar';
-import { auth, db, doc, onSnapshot } from '../lib/firebase';
+import { auth, db, doc, onSnapshot, collection, addDoc, serverTimestamp } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_BRANCHES } from '../data/baccalaureate';
 
 interface Message {
@@ -71,6 +71,26 @@ export default function VirtualTeacher() {
         setImage(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveTeacherMessage = async (text: string) => {
+    if (!auth.currentUser) {
+      alert('يرجى تسجيل الدخول أولاً لتتمكن من حفظ هذا المخطط كملخص دراسي.');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'summaries'), {
+        user_id: auth.currentUser.uid,
+        title: `شرح الأستاذ لدرس: mادة ${selectedSubject || 'عامة'}`,
+        content: text,
+        subject: selectedSubject || 'عامة',
+        created_at: serverTimestamp()
+      });
+      alert('تم حفظ الشرح في ملفك الشخصي وعلامات النشاط بنجاح! 💾✨');
+    } catch (e) {
+      console.error("Error saving teacher explanation:", e);
+      alert('حدث خطأ أثناء حفظ الشرح كملخص.');
     }
   };
 
@@ -225,7 +245,7 @@ export default function VirtualTeacher() {
       >
         <AnimatePresence>
           {messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble key={msg.id} message={msg} onSave={handleSaveTeacherMessage} />
           ))}
           {loading && (
             <motion.div 

@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Bell, Play, Sparkles, TrendingUp, BookOpen, Video, FileText, 
-  AlertTriangle, Plus, Trophy, Medal, Star, Flame, Calendar, User, Download, GraduationCap 
+  AlertTriangle, Plus, Trophy, Medal, Star, Flame, Calendar, User, Download, GraduationCap,
+  Gem, Check, ArrowRight, ShieldAlert, Award
 } from 'lucide-react';
-import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit } from '../lib/firebase';
+import confetti from 'canvas-confetti';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit, updateDoc } from '../lib/firebase';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
@@ -27,6 +29,24 @@ export default function Dashboard() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
 
+  // --- Gamification States ---
+  const [diamonds, setDiamonds] = useState(12);
+  const [streakDays, setStreakDays] = useState(5);
+  const [activeTab, setActiveTab] = useState<'targets' | 'badges'>('targets');
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [subStep, setSubStep] = useState<1 | 2 | 3 | 4>(1);
+  const [selectedPlan, setSelectedPlan] = useState<number>(3); // default 3 Months
+  const [selectedPayMethod, setSelectedPayMethod] = useState<string>('gpay');
+  const [isPaying, setIsPaying] = useState(false);
+  const [leaderboardTab, setLeaderboardTab] = useState<'weekly' | 'alltime'>('weekly');
+
+  const [missions, setMissions] = useState([
+    { id: 1, title: 'احصل على 25 جوهرة', desc: 'كل دقيقة مراجعة تمنحك فرصة', target: 25, current: 12, xp: 40, icon: '💎', type: 'diamonds', claimed: false },
+    { id: 2, title: 'احصل على 40 نقطة مراجعة', desc: 'أكمل التحديات والوسائط لزيادة XP', target: 40, current: 24, xp: 40, icon: '⚡', type: 'xp', claimed: false },
+    { id: 3, title: 'حل اختبارين بالكامل', desc: 'تساعدك على ترسيخ الأساسيات والدروس', target: 2, current: 0, xp: 80, icon: '🎯', type: 'lessons', claimed: false },
+    { id: 4, title: 'أكمل تحدي اليوم بامتياز', desc: 'حل أسئلة البكالوريا المصغرة', target: 1, current: 1, xp: 120, icon: '🔥', type: 'challenge', claimed: false } // Ready to claim!
+  ]);
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUserId(user?.uid ?? null);
@@ -36,7 +56,11 @@ export default function Dashboard() {
         // Listen to active user's profile
         const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data());
+            const pData = docSnap.data();
+            setProfile(pData);
+            if (pData.points) {
+              setStats(prev => ({ ...prev, points: pData.points }));
+            }
           }
         });
         return () => unsubProfile();
@@ -63,7 +87,7 @@ export default function Dashboard() {
     // Fetch Leaderboard for Honor Roll
     const fetchLeaderboard = async () => {
       try {
-        const lbQuery = query(collection(db, 'profiles'), orderBy('points', 'desc'), limit(10));
+        const lbQuery = query(collection(db, 'profiles'), orderBy('points', 'desc'), limit(15));
         const lbSnapshot = await getDocs(lbQuery);
         const lbData = lbSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setLeaderboard(lbData);
@@ -94,7 +118,7 @@ export default function Dashboard() {
         totalScore += doc.data().score;
         totalQuestions += doc.data().total_questions;
       });
-      const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+      const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 105) : 0;
 
       const profileDoc = await getDocs(query(collection(db, 'profiles'), where('__name__', '==', userId)));
       let points = 0;
@@ -105,7 +129,7 @@ export default function Dashboard() {
         level = pData.level || 'مبتدئ';
       }
 
-      setStats({ summaries: summariesCount, videos: videosCount, successRate, points, level });
+      setStats({ summaries: summariesCount, videos: videosCount, successRate: successRate > 100 ? 100 : successRate, points, level });
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
@@ -135,11 +159,66 @@ export default function Dashboard() {
     }
   };
 
+  // --- Gamification Logic ---
+  const handleClaimReward = async (missionId: number, xpReward: number) => {
+    confetti({
+      particleCount: 120,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#8B5CF6', '#EC4899', '#3B82F6', '#10B981']
+    });
+
+    const addedPoints = stats.points + xpReward;
+    
+    // Update live UX
+    setStats(prev => ({ ...prev, points: addedPoints }));
+    setMissions(prev => prev.map(m => m.id === missionId ? { ...m, claimed: true } : m));
+
+    // Save strictly to firebase db
+    if (currentUserId) {
+      try {
+        await updateDoc(doc(db, 'profiles', currentUserId), {
+          points: addedPoints
+        });
+      } catch (e) {
+        console.error("Error saving claimed rewards:", e);
+      }
+    }
+  };
+
+  const handleStartPayment = () => {
+    setIsPaying(true);
+    setTimeout(() => {
+      setIsPaying(false);
+      setSubStep(4);
+      handleUnlockPremium();
+    }, 2000);
+  };
+
+  const handleUnlockPremium = async () => {
+    confetti({
+      particleCount: 200,
+      spread: 120,
+      colors: ['#FFD705', '#F59E0B', '#9333EA', '#EC4899']
+    });
+    
+    // Update state & save to firestore
+    if (currentUserId) {
+      try {
+        await updateDoc(doc(db, 'profiles', currentUserId), {
+          is_premium: true
+        });
+      } catch (e) {
+        console.error("Error upgrading to Premium:", e);
+      }
+    }
+  };
+
   const filteredFeed = activeFilter === 'all' 
     ? feed 
     : feed.filter(item => item.type === activeFilter);
 
-  // Fallback demo highlight video list in case no posts are tagged as videos loaded yet
+  // Fallback demo highlight video list
   const fallbackVideos = [
     {
       id: 'vid-1',
@@ -159,53 +238,157 @@ export default function Dashboard() {
     }
   ];
 
-  if (loading) return <Loader />;
+  // Dynamically prepare podium champions
+  const podiumWinners = [...leaderboard].slice(0, 3);
+  const remainingLeaderboard = [...leaderboard].slice(3);
+
+  // Fill in mock champions if firebase list has less than 3
+  const firstPlace = podiumWinners[0] || { full_name: 'مريم الصالح', points: 948, id: 'mock-1', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' };
+  const secondPlace = podiumWinners[1] || { full_name: 'أحمد الجزائري', points: 872, id: 'mock-2', avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' };
+  const thirdPlace = podiumWinners[2] || { full_name: 'أمينة بن يوسف', points: 769, id: 'mock-3', avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150' };
 
   return (
-    <div className="max-w-md md:max-w-7xl mx-auto min-h-screen bg-[#F3F7FA] dark:bg-gray-950 pb-28 md:pb-12 font-sans transition-colors relative antialiased px-4 md:px-8" dir="rtl">
+    <div className="max-w-md md:max-w-7xl mx-auto min-h-screen bg-[#F3F7FA] dark:bg-[#070514] pb-28 md:pb-12 font-sans transition-colors relative antialiased px-4 md:px-8 shadow-inner" dir="rtl">
       
+      {/* Dynamic Top Stat Bar */}
+      <div className="flex items-center justify-between gap-3 pt-4 px-2 overflow-x-auto scrollbar-none pb-2 border-b border-gray-150 dark:border-gray-901">
+        <div className="flex items-center gap-2">
+          {/* Streak indicator */}
+          <div className="flex items-center gap-1.5 bg-orange-50 dark:bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-100 dark:border-orange-500/20 text-orange-600 dark:text-orange-400 font-extrabold text-xs">
+            <Flame size={14} className="fill-orange-500 text-orange-500" />
+            <span>{streakDays} أيام متتالية</span>
+          </div>
+          
+          {/* Diamonds meter */}
+          <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-105 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 font-extrabold text-xs">
+            <Gem size={14} className="fill-blue-500 text-blue-500" />
+            <span>{diamonds} جوهرة</span>
+          </div>
+
+          {/* Points indicator */}
+          <div className="flex items-center gap-1.5 bg-yellow-50 dark:bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-100 dark:border-yellow-500/20 text-yellow-650 dark:text-yellow-400 font-extrabold text-xs">
+            <Trophy size={14} className="text-yellow-500" />
+            <span>{stats.points} XP</span>
+          </div>
+        </div>
+
+        {/* Level Indicator & Go VIP */}
+        <div className="flex items-center gap-2">
+          {profile?.is_premium ? (
+            <span className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black text-xs px-3 py-1.5 rounded-full shadow-md">
+              <Sparkles size={13} />
+              شريك ماسي VIP
+            </span>
+          ) : (
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setSubStep(1);
+                setIsSubModalOpen(true);
+              }}
+              className="flex items-center gap-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black text-xs px-3 py-1.5 rounded-full shadow hover:shadow-indigo-500/25 transition-all text-center cursor-pointer"
+            >
+              <Sparkles size={13} className="animate-spin" />
+              <span>ترقية ذهبية</span>
+            </motion.button>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6">
         
         {/* Main Content Column (Takes 8 of 12 columns on desktop) */}
         <div className="lg:col-span-8 space-y-6">
+          
           {/* 1. Header Area with Notification & Profile details */}
-          <header className="py-2 flex items-center justify-between md:bg-white md:dark:bg-gray-900 md:p-5 md:rounded-3xl md:shadow-sm md:border md:border-gray-100 md:dark:border-gray-800">
+          <header className="py-2 flex items-center justify-between md:bg-white md:dark:bg-[#120F30] md:p-5 md:rounded-3xl md:shadow-md md:border md:border-gray-150 md:dark:border-purple-900/20">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-white">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-bold text-lg">
-                    {profile?.full_name?.charAt(0) || 'أ'}
-                  </div>
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-white">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-bold text-lg">
+                      {profile?.full_name?.charAt(0) || 'أ'}
+                    </div>
+                  )}
+                </div>
+                {profile?.is_premium && (
+                  <span className="absolute -top-1.5 -right-1 z-10 bg-yellow-450 border border-white text-white p-0.5 rounded-full shadow-md text-[9px]">👑</span>
                 )}
               </div>
               <div>
-                <h2 className="text-[17px] font-black text-gray-900 dark:text-white leading-tight">
-                  {profile?.full_name || 'تلميذنا البطل'}
-                </h2>
-                <p className="text-xs text-gray-500 font-semibold dark:text-gray-400">الرئيسية</p>
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-[17px] font-black text-gray-900 dark:text-white leading-tight">
+                    {profile?.full_name || 'تلميذنا البطل'}
+                  </h2>
+                  {profile?.is_premium && (
+                    <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-extrabold text-[9px] px-1.5 py-0.5 rounded border border-amber-205 dark:border-amber-500/30">VIP</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 font-semibold dark:text-gray-400">الرئيسية • {stats.level}</p>
               </div>
             </div>
 
             <button 
               onClick={() => navigate('/notifications')} 
-              className="w-10 h-10 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-sm relative group active:scale-95 transition-transform border border-gray-100 dark:border-gray-800"
+              className="w-10 h-10 bg-white dark:bg-[#18143C] rounded-full flex items-center justify-center shadow-sm relative group active:scale-95 transition-transform border border-gray-100 dark:border-gray-804"
             >
-              <Bell size={20} className="text-gray-700 dark:text-gray-300 group-hover:rotate-12 transition-transform" />
+              <Bell size={20} className="text-gray-750 dark:text-gray-300 group-hover:rotate-12 transition-transform" />
               <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse" />
             </button>
           </header>
 
           {/* 2. Baccalaureate Countdown Timer */}
-          <section className="my-4">
+          <section className="my-2">
             <BacCountdown />
           </section>
 
-          {/* 6. "الجدول" (Sleek Grid Navigation / Quick Cards) - Moved up for high-fidelity PC preview */}
+          {/* 5 Days Straight Streak Calendar Widget */}
+          <section className="bg-white dark:bg-[#120F30] rounded-3xl p-5 border border-gray-150 dark:border-purple-900/20 shadow-sm space-y-4">
+            <div className="flex items-center justify-between text-right">
+              <div>
+                <h3 className="font-extrabold text-gray-900 dark:text-white text-[15px] flex items-center gap-2">
+                  <Flame size={18} className="text-orange-500 animate-pulse" />
+                  شعلة الاتساق: {streakDays} أيام متتالية!
+                </h3>
+                <p className="text-[11px] text-gray-500 dark:text-purple-300/60 mt-0.5">يزداد مستوى نقاطك إذا التزمت يوميًا وحققت أهدافك</p>
+              </div>
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">سجل النشاط اليومي</span>
+            </div>
+
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7 gap-2.5 pt-2">
+              {[
+                { label: 'الاثنين', active: true, labelShort: 'Mo' },
+                { label: 'الثلاثاء', active: true, labelShort: 'Tu' },
+                { label: 'الأربعاء', active: true, labelShort: 'We' },
+                { label: 'الخميس', active: true, labelShort: 'Th' },
+                { label: 'الجمعة', active: true, labelShort: 'Fr' },
+                { label: 'السبت', active: false, labelShort: 'Sa', current: true },
+                { label: 'الأحد', active: false, labelShort: 'Su' }
+              ].map((day, idx) => (
+                <div key={idx} className="flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all border ${
+                    day.active 
+                      ? 'bg-gradient-to-tr from-purple-500 to-indigo-600 text-white border-transparent shadow shadow-indigo-500/30' 
+                      : day.current 
+                        ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-300' 
+                        : 'bg-gray-100 dark:bg-gray-900 text-gray-400 border-transparent'
+                  }`}>
+                    {day.active ? <Check size={16} strokeWidth={3} /> : <span className="text-xs">{day.labelShort}</span>}
+                  </div>
+                  <span className="text-[9px] font-bold text-gray-500 dark:text-gray-404 mt-1.5">{day.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Quick Grid Navigation / Quick Cards */}
           <section className="mt-4">
             <div className="mb-3 text-right">
-              <h3 className="font-black text-gray-900 dark:text-white text-[15px]">الجدول والأقسام</h3>
+              <h3 className="font-black text-gray-900 dark:text-white text-[15px]">الجدول والأقسام الدراسية</h3>
             </div>
             
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -214,8 +397,8 @@ export default function Dashboard() {
                 className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 hover:-translate-y-1 transition-transform group flex items-start justify-between"
               >
                 <div className="space-y-1 text-right">
-                  <span className="text-[12px] font-black text-emerald-800 dark:text-emerald-300 block">المواضيع السابقة</span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">ملخص والامتحانات</span>
+                  <span className="text-[12px] font-black text-emerald-850 dark:text-emerald-350 block">المواضيع السابقة</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-450 font-semibold">حلول رسمية تفصيلية</span>
                 </div>
                 <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
                   <Download size={18} />
@@ -227,8 +410,8 @@ export default function Dashboard() {
                 className="bg-indigo-50 dark:bg-indigo-950/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 hover:-translate-y-1 transition-transform group flex items-start justify-between"
               >
                 <div className="space-y-1 text-right">
-                  <span className="text-[12px] font-black text-indigo-800 dark:text-indigo-300 block">المنشورات</span>
-                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">مشاركة ومساعدة</span>
+                  <span className="text-[12px] font-black text-indigo-850 dark:text-indigo-300 block">منتدى الطلاب</span>
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">تفاعل واستفسارات</span>
                 </div>
                 <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
                   <FileText size={18} />
@@ -240,8 +423,8 @@ export default function Dashboard() {
                 className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/40 hover:-translate-y-1 transition-transform group flex items-start justify-between"
               >
                 <div className="space-y-1 text-right">
-                  <span className="text-[12px] font-black text-amber-800 dark:text-amber-300 block">الاختبارات</span>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">تحقق من مستواك</span>
+                  <span className="text-[12px] font-black text-amber-850 dark:text-amber-350 block">بنك الأسئلة</span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">اختبارات ذكية</span>
                 </div>
                 <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-amber-500/20">
                   <GraduationCap size={18} />
@@ -253,8 +436,8 @@ export default function Dashboard() {
                 className="bg-rose-50 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/40 hover:-translate-y-1 transition-transform group flex items-start justify-between"
               >
                 <div className="space-y-1 text-right">
-                  <span className="text-[12px] font-black text-rose-800 dark:text-rose-300 block">اليوتيوب</span>
-                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">مساعد الفيديو الذكي</span>
+                  <span className="text-[12px] font-black text-rose-850 dark:text-rose-350 block">مساعد يوتيوب</span>
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold font-sans">تلخيص مرئي فوري</span>
                 </div>
                 <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-rose-500/20">
                   <Play size={18} />
@@ -263,53 +446,220 @@ export default function Dashboard() {
             </div>
           </section>
 
-          {/* 3. "لوحة الشرف" Honor Roll (Leaderboard horizontally on mobile, sidebar list on PC) */}
-          <section className="mt-6 mb-4 lg:hidden">
-            <div className="flex items-center justify-between mb-3 text-right">
-              <h3 className="font-black text-gray-900 dark:text-white flex items-center gap-2 text-[15px]">
-                <Trophy size={16} className="text-yellow-500" />
-                لوحة الشرف للأبطال
-              </h3>
-              <span className="text-xs text-blue-600 font-extrabold hover:underline cursor-pointer">لوحة 15</span>
+          {/* "Daily Missions" & Badges Segment */}
+          <section className="bg-white dark:bg-[#120F30] rounded-[32px] p-6 border border-gray-150 dark:border-purple-900/20 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-50 dark:border-purple-900/10 pb-4">
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setActiveTab('targets')}
+                  className={`text-[14px] font-black pb-2 transition-all relative cursor-pointer ${
+                    activeTab === 'targets' ? 'text-purple-650 dark:text-purple-400 font-extrabold' : 'text-gray-400 hover:text-gray-650'
+                  }`}
+                >
+                  المهام اليومية (Targets)
+                  {activeTab === 'targets' && (
+                    <motion.div layoutId="missionTag" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400" />
+                  )}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('badges')}
+                  className={`text-[14px] font-black pb-2 transition-all relative cursor-pointer ${
+                    activeTab === 'badges' ? 'text-purple-650 dark:text-purple-400 font-extrabold' : 'text-gray-400 hover:text-gray-655'
+                  }`}
+                >
+                  أوسمة التحدي والتميز
+                  {activeTab === 'badges' && (
+                    <motion.div layoutId="missionTag" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400" />
+                  )}
+                </button>
+              </div>
+              <span className="text-xs text-purple-600 dark:text-purple-400 font-black cursor-pointer hover:underline">مراجعة المهام</span>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-4 overflow-x-auto scrollbar-none py-4">
-              {leaderboard.map((user, idx) => {
-                const indexStr = idx === 0 ? '1 العلمي' : idx === 1 ? '2 ثلافي' : idx === 2 ? '3 الحرب' : `${idx + 1} بطل`;
-                const badgeColor = idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-slate-300' : idx === 2 ? 'bg-amber-600' : 'bg-blue-500';
+            {activeTab === 'targets' ? (
+              <div className="space-y-4">
+                {missions.map((mission) => {
+                  const percent = Math.min(Math.round((mission.current / mission.target) * 100), 100);
+                  const isCompleted = mission.current >= mission.target;
 
+                  return (
+                    <div key={mission.id} className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-[#1a1548]/40 border border-transparent dark:border-purple-900/10 rounded-2xl hover:bg-gray-100/50 dark:hover:bg-[#1a1548]/65 transition-all">
+                      <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                        <span className="text-2xl w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/80 flex items-center justify-center flex-shrink-0 shadow-sm">{mission.icon}</span>
+                        <div className="flex-1 space-y-1 text-right min-w-0">
+                          <h4 className="text-xs font-black text-gray-850 dark:text-gray-150 leading-tight">{mission.title}</h4>
+                          <p className="text-[10px] text-gray-400 dark:text-purple-300/50 font-bold truncate">{mission.desc}</p>
+                          
+                          {/* Progress Line */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <div className="flex-1 bg-gray-200 dark:bg-[#151139] h-2 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percent}%` }}
+                                className={`h-full rounded-full bg-gradient-to-r ${
+                                  mission.type === 'diamonds' ? 'from-blue-400 to-indigo-500' :
+                                  mission.type === 'xp' ? 'from-yellow-400 to-amber-500' :
+                                  mission.type === 'lessons' ? 'from-emerald-400 to-teal-500' : 'from-rose-400 to-orange-505'
+                                }`}
+                              />
+                            </div>
+                            <span className="font-mono text-[9px] text-gray-500 dark:text-gray-400 font-extrabold whitespace-nowrap">{mission.current}/{mission.target}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mr-4 flex-shrink-0">
+                        {mission.claimed ? (
+                          <span className="text-[10px] text-gray-400 dark:text-gray-450 font-black bg-gray-100 dark:bg-[#151239] px-2.5 py-1.5 rounded-xl">تم استلامه</span>
+                        ) : isCompleted ? (
+                          <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleClaimReward(mission.id, mission.xp)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-md cursor-pointer animate-pulse"
+                          >
+                            استلام {mission.xp} XP
+                          </motion.button>
+                        ) : (
+                          <span className="text-[10px] text-purple-650 dark:text-purple-400 font-extrabold bg-purple-50 dark:bg-purple-900/10 px-2.5 py-1.5 rounded-xl">{percent}% كمل</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              // Badges Tab list
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { title: 'ملك الاختبارات (Quiz King)', date: 'البكالوريا ٢٠٢٧', score: '2000 XP', badge: '👑', color: 'from-yellow-400 to-amber-500' },
+                  { title: 'الذكي المرشد (AI Smart)', date: 'البكالوريا ٢٠٢٧', score: '1500 XP', badge: '🧭', color: 'from-orange-400 to-red-500' },
+                  { title: 'قاهر الصعاب (Diamond Winner)', date: 'البكالوريا ٢٠٢٧', score: '2500 XP', badge: '💎', color: 'from-blue-400 to-indigo-500' },
+                  { title: 'طليعة الامتياز (A+ Master)', date: 'البكالوريا ٢٠٢٧', score: '1700 XP', badge: '📚', color: 'from-emerald-400 to-teal-500' }
+                ].map((badge, idx) => (
+                  <div key={idx} className="bg-gray-50 dark:bg-[#1a1548]/30 rounded-2xl p-4 text-center border border-transparent dark:border-purple-900/10 flex flex-col items-center">
+                    <div className={`w-14 h-14 rounded-full bg-gradient-to-tr ${badge.color} flex items-center justify-center text-2xl shadow-md border-2 border-white dark:border-gray-901 mb-3`}>
+                      {badge.badge}
+                    </div>
+                    <h5 className="text-[11px] font-black text-gray-850 dark:text-gray-150 leading-tight">{badge.title}</h5>
+                    <span className="text-[9px] text-gray-400 mt-1 font-bold">{badge.date}</span>
+                    <span className="text-[10.5px] font-extrabold text-purple-600 dark:text-purple-400 mt-2">{badge.score}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* 3D Podium Honor Roll section on mobile */}
+          <section className="bg-white dark:bg-[#120F30] rounded-3xl p-5 border border-gray-150 dark:border-purple-900/20 shadow-sm lg:hidden">
+            <div className="flex items-center justify-between mb-4 text-right">
+              <h3 className="font-black text-gray-900 dark:text-white flex items-center gap-2 text-[15px]">
+                <Trophy size={16} className="text-yellow-500" />
+                أبطال الأسبوع في المنصة
+              </h3>
+              <div className="flex bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5">
+                <button 
+                  onClick={() => setLeaderboardTab('weekly')}
+                  className={`text-[10px] font-black px-2 py-1 rounded-md ${leaderboardTab === 'weekly' ? 'bg-white dark:bg-[#1c184c] text-purple-600 shadow-sm' : 'text-gray-405'}`}
+                >
+                  أسبوعي
+                </button>
+                <button 
+                  onClick={() => setLeaderboardTab('alltime')}
+                  className={`text-[10px] font-black px-2 py-1 rounded-md ${leaderboardTab === 'alltime' ? 'bg-white dark:bg-[#1c184c] text-purple-600 shadow-sm' : 'text-gray-405'}`}
+                >
+                  الكل
+                </button>
+              </div>
+            </div>
+
+            {/* Render top 3 winners with beautiful 3D Columns */}
+            <div className="flex items-end justify-center gap-3 pt-6 pb-2 min-h-[160px] border-b border-gray-50 dark:border-purple-900/10">
+              
+              {/* 2nd Place */}
+              <div className="flex flex-col items-center flex-1 max-w-[90px]">
+                <div className="relative group cursor-pointer" onClick={() => setPreviewUserId(secondPlace.id)}>
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-[2.5px] border-slate-350 shadow bg-gray-100">
+                    <img src={secondPlace.avatar_url} alt={secondPlace.full_name} className="w-full h-full object-cover animate-pulse" />
+                  </div>
+                  <span className="absolute -bottom-1 -left-1 w-4.5 h-4.5 bg-slate-400 text-white rounded-full flex items-center justify-center font-black text-[9px] shadow border border-white">
+                    2
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-800 dark:text-gray-200 mt-2 truncate max-w-[65px]">{secondPlace.full_name?.split(' ')[0]}</span>
+                <span className="text-[8px] font-black text-slate-500">{secondPlace.points || 0} XP</span>
+                <div className="w-full bg-slate-100 dark:bg-[#181440]/55 h-12 rounded-t-xl mt-2 flex items-center justify-center border-t border-x border-slate-200 dark:border-purple-900/20">
+                  <span className="font-extrabold text-[12px] text-slate-500">٢</span>
+                </div>
+              </div>
+
+              {/* 1st Place */}
+              <div className="flex flex-col items-center flex-1 max-w-[100px] -translate-y-1">
+                <div className="relative group cursor-pointer -mt-4 mb-0.5" onClick={() => setPreviewUserId(firstPlace.id)}>
+                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-yellow-450 animate-bounce text-sm">👑</span>
+                  <div className="w-14 h-14 rounded-full overflow-hidden border-[2.5px] border-yellow-400 shadow bg-gray-100 shadow-yellow-400/20">
+                    <img src={firstPlace.avatar_url} alt={firstPlace.full_name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="absolute -bottom-1 -left-1 w-5 h-5 bg-yellow-400 text-white rounded-full flex items-center justify-center font-black text-[10px] shadow border border-white">
+                    1
+                  </span>
+                </div>
+                <span className="text-[10.5px] font-black text-gray-901 dark:text-yellow-400 truncate max-w-[75px]">{firstPlace.full_name?.split(' ')[0]}</span>
+                <span className="text-[8px] font-black text-blue-600 dark:text-blue-400">{firstPlace.points || 0} XP</span>
+                <div className="w-full bg-yellow-100/75 dark:bg-yellow-500/10 h-16 rounded-t-xl mt-2 flex items-center justify-center border-t border-x border-yellow-300 dark:border-yellow-500/20 shadow">
+                  <span className="font-black text-sm text-yellow-700">١</span>
+                </div>
+              </div>
+
+              {/* 3rd Place */}
+              <div className="flex flex-col items-center flex-1 max-w-[90px]">
+                <div className="relative group cursor-pointer" onClick={() => setPreviewUserId(thirdPlace.id)}>
+                  <div className="w-11 h-11 rounded-full overflow-hidden border-[2.5px] border-amber-605 shadow bg-gray-105">
+                    <img src={thirdPlace.avatar_url} alt={thirdPlace.full_name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="absolute -bottom-1 -left-1 w-4.5 h-4.5 bg-amber-600 text-white rounded-full flex items-center justify-center font-black text-[9px] shadow border border-white">
+                    3
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-800 dark:text-gray-200 mt-2 truncate max-w-[65px]">{thirdPlace.full_name?.split(' ')[0]}</span>
+                <span className="text-[8px] font-black text-amber-653">{thirdPlace.points || 0} XP</span>
+                <div className="w-full bg-[#faedd9]/50 dark:bg-amber-950/10 h-10 rounded-t-xl mt-2 flex items-center justify-center border-t border-x border-amber-500/20 dark:border-purple-900/10">
+                  <span className="font-extrabold text-[12px] text-amber-700">٣</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Mobile leader list scrollable */}
+            <div className="max-h-60 overflow-y-auto scrollbar-none space-y-3 pt-3">
+              {remainingLeaderboard.map((user, idx) => {
                 return (
                   <div 
                     key={user.id} 
                     onClick={() => setPreviewUserId(user.id)}
-                    className="flex flex-col items-center text-center cursor-pointer min-w-[70px] group relative"
+                    className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-purple-905/30 rounded-xl cursor-pointer"
                   >
-                    <div className="relative">
-                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white dark:border-gray-900 shadow-md transform group-hover:scale-105 transition-transform bg-gray-100">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-xs text-gray-400 w-5 text-center">{idx + 4}</span>
+                      <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-gray-800 shadow-sm flex-shrink-0">
                         {user.avatar_url ? (
-                          <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover" />
+                          <img src={user.avatar_url} alt={user.full_name} className="w-full h-full object-cover animate-fade-in" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-base">
-                            {user.full_name?.charAt(0) || '?'}
+                          <div className="w-full h-full flex items-center justify-center bg-blue-105 text-indigo-650 font-bold text-xs">
+                            {user.full_name?.charAt(0) || 'أ'}
                           </div>
                         )}
                       </div>
-                      {/* Top Rank Badge */}
-                      <span className={`absolute -bottom-1.5 -left-1 text-[8px] font-black text-white ${badgeColor} px-1.5 py-0.5 rounded-full shadow border border-white dark:border-gray-900 whitespace-nowrap`}>
-                        {indexStr}
-                      </span>
+                      <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{user.full_name}</span>
                     </div>
-                    <p className="text-[11px] font-bold text-gray-800 dark:text-gray-200 mt-2.5 truncate max-w-[65px]">
-                      {user.full_name?.split(' ')[0] || 'مستخدم'}
-                    </p>
-                    <p className="text-[9px] text-gray-400 font-bold mt-0.5">{user.points || 0} XP</p>
+                    <span className="text-[11px] font-black text-purple-600 dark:text-purple-400">{user.points || 0} XP</span>
                   </div>
                 );
               })}
             </div>
           </section>
 
-          {/* 4. Filter Button tabs */}
+          {/* Filter Button tabs */}
           <section className="mt-6 mb-4">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
               <FilterButton 
@@ -333,7 +683,7 @@ export default function Dashboard() {
             </div>
           </section>
 
-          {/* 5. Custom HIGHLIGHT / VIDEOS list ("مميّز مستمر") */}
+          {/* Custom HIGHLIGHT / VIDEOS list */}
           {activeFilter === 'all' && (
             <section className="mb-6">
               <div className="grid grid-cols-2 gap-4">
@@ -341,7 +691,7 @@ export default function Dashboard() {
                   <div 
                     key={video.id} 
                     onClick={() => navigate('/youtube')}
-                    className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 group cursor-pointer"
+                    className="bg-white dark:bg-[#120F30] rounded-2xl overflow-hidden shadow-sm border border-gray-150 dark:border-purple-900/10 group cursor-pointer"
                   >
                     <div className="relative aspect-video overflow-hidden">
                       <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -349,7 +699,7 @@ export default function Dashboard() {
                         {video.duration}
                       </span>
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow flex items-center justify-center text-blue-600 scale-90 group-hover:scale-100 transition-transform">
+                        <div className="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm shadow flex items-center justify-center text-blue-600 scale-90 group-hover:scale-100 transition-transform">
                           <Play size={14} fill="currentColor" />
                         </div>
                       </div>
@@ -359,7 +709,7 @@ export default function Dashboard() {
                         {video.title}
                       </h4>
                       <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-                        <span className="font-semibold text-blue-600 dark:text-blue-400">{video.author}</span>
+                        <span className="font-semibold text-blue-600 dark:text-blue-450">{video.author}</span>
                         <span>{video.views} مشاهدة</span>
                       </div>
                     </div>
@@ -384,8 +734,8 @@ export default function Dashboard() {
                     />
                   ))
                 ) : (
-                  <div className="text-center bg-white dark:bg-gray-900 py-12 rounded-2xl border border-gray-100 dark:border-gray-800 text-gray-400 text-sm">
-                    لا توجد منشورات متاحة حالياً
+                  <div className="text-center bg-white dark:bg-[#120F30] py-12 rounded-2xl border border-gray-150 dark:border-purple-900/10 text-gray-400 text-sm">
+                    لا توجد منشورات مساهمة مسجلة حالياً
                   </div>
                 )}
               </AnimatePresence>
@@ -393,12 +743,37 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Sidebar/Left Column (Takes 4 of 12 columns, hidden on mobile, excellent for PC layout) */}
+        {/* Sidebar/Left Column (Takes 4 of 12 columns, hidden on mobile) */}
         <div className="hidden lg:flex lg:col-span-4 flex-col gap-6">
+
+          {/* Premium VIP Side Card */}
+          <div className="bg-gradient-to-br from-indigo-700 via-purple-705 to-indigo-850 rounded-[32px] p-6 text-white shadow-xl shadow-purple-650/10 space-y-4 relative overflow-hidden">
+            <span className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+            <div className="flex items-center gap-3">
+              <span className="text-2xl animate-spin">👑</span>
+              <div>
+                <h4 className="font-black text-yellow-350 text-base">ترقية العضوية الذهبية (Premium)</h4>
+                <p className="text-[10px] text-purple-200 font-extrabold">مكافآت وامتيازات غير محدودة للبكالوريا</p>
+              </div>
+            </div>
+            <p className="text-xs text-indigo-50 leading-relaxed font-semibold">تمنحك العضوية كنز غير محدود من الجواهر، مسابقة كبرى للمتصدرين، حلول امتحانات فورية بالذكاء الاصطناعي، ومشاركات خاصة.</p>
+            <motion.button 
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                setSubStep(1);
+                setIsSubModalOpen(true);
+              }}
+              className="w-full bg-white text-indigo-900 py-3 rounded-2xl text-xs font-black shadow-lg shadow-black/10 text-center cursor-pointer"
+            >
+              الترقية للولوج الماسي الآن
+            </motion.button>
+          </div>
+
           {/* Stats card */}
-          <div className="bg-white dark:bg-gray-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-gray-800 space-y-6">
+          <div className="bg-white dark:bg-[#120F30] rounded-[32px] p-6 shadow-sm border border-gray-150 dark:border-[#211b59]/30 space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-50 dark:bg-purple-950/40 text-blue-600 dark:text-purple-400 rounded-2xl flex items-center justify-center">
                 <Trophy size={24} />
               </div>
               <div>
@@ -408,46 +783,95 @@ export default function Dashboard() {
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#F8FAFC] dark:bg-gray-950 p-4 rounded-2xl text-center border border-gray-100 dark:border-gray-900 shadow-sm">
+              <div className="bg-[#F8FAFC] dark:bg-[#18143C]/40 p-4 rounded-2xl text-center border border-gray-100 dark:border-purple-900/10 shadow-sm">
                 <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{stats.points}</span>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black mt-1">النقاط بالكامل (XP)</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-400 font-black mt-1">النقاط بالكامل (XP)</p>
               </div>
-              <div className="bg-[#F8FAFC] dark:bg-gray-950 p-4 rounded-2xl text-center border border-gray-100 dark:border-gray-900 shadow-sm">
+              <div className="bg-[#F8FAFC] dark:bg-[#18143C]/40 p-4 rounded-2xl text-center border border-gray-100 dark:border-purple-900/10 shadow-sm">
                 <span className="text-2xl font-black text-emerald-500">{stats.successRate}%</span>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black mt-1">نسبة النجاح بالاختبار</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-400 font-black mt-1">نسبة النجاح بالاختبار</p>
               </div>
-              <div className="bg-[#F8FAFC] dark:bg-gray-950 p-4 rounded-2xl text-center border border-gray-100 dark:border-gray-900 shadow-sm">
+              <div className="bg-[#F8FAFC] dark:bg-[#18143C]/40 p-4 rounded-2xl text-center border border-gray-100 dark:border-purple-900/10 shadow-sm">
                 <span className="text-2xl font-black text-indigo-500">{stats.summaries}</span>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black mt-1">ملخصاتك الدراسية</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-400 font-black mt-1">ملخصاتك الدراسية</p>
               </div>
-              <div className="bg-[#F8FAFC] dark:bg-gray-950 p-4 rounded-2xl text-center border border-gray-100 dark:border-gray-900 shadow-sm">
+              <div className="bg-[#F8FAFC] dark:bg-[#18143C]/40 p-4 rounded-2xl text-center border border-gray-100 dark:border-purple-900/10 shadow-sm">
                 <span className="text-2xl font-black text-rose-500">{stats.videos * 2 + 10}</span>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black mt-1">ساعات المراجعة</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-400 font-black mt-1">ساعات المراجعة</p>
               </div>
             </div>
           </div>
 
-          {/* Vertical Leaderboard list */}
-          <div className="bg-white dark:bg-gray-900 rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-gray-800 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-extrabold text-gray-900 dark:text-white flex items-center gap-2 text-base">
+          {/* Vertical Leaderboard with 3D Podium preview at the top of the list! */}
+          <div className="bg-white dark:bg-[#120F30] rounded-[32px] p-6 shadow-sm border border-gray-155 dark:border-[#211b59]/30 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-801">
+              <h3 className="font-extrabold text-gray-905 dark:text-white flex items-center gap-2 text-base">
                 <Trophy size={18} className="text-yellow-500 animate-bounce" />
-                المتصدرون في لوحة الشرف
+                المتصدرون في لوحة الشرف للأسبوع
               </h3>
             </div>
+
+            {/* Complete 3D Podium Columns for Sidebar (Exquisite quality desktop visual!) */}
+            <div className="flex items-end justify-center gap-3 pt-6 pb-2 min-h-[160px] border-b border-gray-50 dark:border-purple-900/10">
+              {/* 2nd place */}
+              <div className="flex flex-col items-center flex-1 max-w-[80px]">
+                <div className="relative group cursor-pointer" onClick={() => setPreviewUserId(secondPlace.id)}>
+                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-slate-350 shadow bg-gray-105">
+                    <img src={secondPlace.avatar_url} alt={secondPlace.full_name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="absolute -bottom-1 -left-1 w-4.5 h-4.5 bg-slate-400 text-white rounded-full flex items-center justify-center font-black text-[9px] shadow border border-white">2</span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-750 dark:text-gray-250 mt-1.5 truncate max-w-[65px]">{secondPlace.full_name?.split(' ')[0]}</span>
+                <span className="text-[8px] font-black text-slate-500">{secondPlace.points} XP</span>
+                <div className="w-full bg-[#E2E8F0] dark:bg-[#18143C]/20 h-10 rounded-t-xl mt-2 flex items-center justify-center border-t border-x border-slate-300 dark:border-purple-900/10">
+                  <span className="font-extrabold text-xs text-slate-655">٢</span>
+                </div>
+              </div>
+
+              {/* 1st place */}
+              <div className="flex flex-col items-center flex-1 max-w-[90px] -translate-y-1">
+                <div className="relative group cursor-pointer -mt-4 mb-0.5" onClick={() => setPreviewUserId(firstPlace.id)}>
+                  <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-yellow-450 animate-bounce text-sm">👑</span>
+                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-yellow-400 shadow bg-gray-105 shadow-yellow-400/15">
+                    <img src={firstPlace.avatar_url} alt={firstPlace.full_name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="absolute -bottom-1 -left-1 w-5 h-5 bg-yellow-400 text-white rounded-full flex items-center justify-center font-black text-[10px] shadow border border-white">1</span>
+                </div>
+                <span className="text-[11px] font-black text-gray-900 dark:text-yellow-400 truncate max-w-[75px]">{firstPlace.full_name?.split(' ')[0]}</span>
+                <span className="text-[8px] font-black text-blue-600 dark:text-blue-400">{firstPlace.points} XP</span>
+                <div className="w-full bg-yellow-101/50 dark:bg-yellow-500/10 h-14 rounded-t-xl mt-2 flex items-center justify-center border-t border-x border-yellow-300 dark:border-yellow-500/10 shadow">
+                  <span className="font-black text-xs text-yellow-750">١</span>
+                </div>
+              </div>
+
+              {/* 3rd place */}
+              <div className="flex flex-col items-center flex-1 max-w-[80px]">
+                <div className="relative group cursor-pointer" onClick={() => setPreviewUserId(thirdPlace.id)}>
+                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-amber-600 shadow bg-gray-105">
+                    <img src={thirdPlace.avatar_url} alt={thirdPlace.full_name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="absolute -bottom-1 -left-1 w-4.5 h-4.5 bg-amber-600 text-white rounded-full flex items-center justify-center font-black text-[9px] shadow border border-white">3</span>
+                </div>
+                <span className="text-[10px] font-bold text-gray-750 dark:text-gray-255 mt-1.5 truncate max-w-[65px]">{thirdPlace.full_name?.split(' ')[0]}</span>
+                <span className="text-[8px] font-black text-amber-500">{thirdPlace.points} XP</span>
+                <div className="w-full bg-[#faedd9]/50 dark:bg-[#18143C]/20 h-8 rounded-t-xl mt-2 flex items-center justify-center border-t border-x border-amber-300 dark:border-purple-900/10">
+                  <span className="font-extrabold text-xs text-amber-700">٣</span>
+                </div>
+              </div>
+            </div>
             
-            <div className="space-y-3">
-              {leaderboard.map((user, idx) => {
-                const rankBadgeColor = idx === 0 ? 'bg-yellow-400 text-white shadow-md shadow-yellow-400/20' : idx === 1 ? 'bg-slate-300 text-slate-850' : idx === 2 ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20' : 'bg-blue-50 dark:bg-gray-800 text-blue-600 dark:text-blue-400';
+            <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-none pt-2">
+              {remainingLeaderboard.map((user, idx) => {
+                const rankBadgeColor = 'bg-blue-50 dark:bg-gray-800 text-blue-650 dark:text-blue-400';
                 return (
                   <div 
                     key={user.id}
                     onClick={() => setPreviewUserId(user.id)}
-                    className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-950 cursor-pointer transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-900"
+                    className="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-purple-950/20 cursor-pointer transition-all border border-transparent"
                   >
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-lg font-black text-xs flex items-center justify-center ${rankBadgeColor} flex-shrink-0`}>
-                        {idx + 1}
+                        {idx + 4}
                       </span>
                       <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-gray-800 shadow-sm flex-shrink-0">
                         {user.avatar_url ? (
@@ -462,7 +886,7 @@ export default function Dashboard() {
                         {user.full_name || 'مستخدم جديد'}
                       </span>
                     </div>
-                    <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                    <span className="text-xs font-extrabold text-purple-600 dark:text-purple-400 whitespace-nowrap">
                       {user.points || 0} XP
                     </span>
                   </div>
@@ -482,7 +906,7 @@ export default function Dashboard() {
           setEditingPost(null);
           setIsCreateModalOpen(true);
         }}
-        className="fixed bottom-24 right-5 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:bg-blue-700 hover:shadow-xl transition-all lg:hidden"
+        className="fixed bottom-24 right-5 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center z-40 active:bg-blue-700 hover:shadow-xl transition-all lg:hidden cursor-pointer"
       >
         <Plus size={24} />
       </motion.button>
@@ -496,12 +920,257 @@ export default function Dashboard() {
             setEditingPost(null);
             setIsCreateModalOpen(true);
           }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-bold transition-all"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-bold transition-all cursor-pointer"
         >
           <Plus size={20} />
           <span>أنشئ منشورًا جديدًا</span>
         </motion.button>
       </div>
+
+      {/* --- PREMIUM VIP CHECKOUT DIALOG / MODAL  --- */}
+      <AnimatePresence>
+        {isSubModalOpen && (
+          <>
+            {/* Modal Backdrop overlay */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSubModalOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 100 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 100 }}
+              className="fixed bottom-0 md:top-1/2 left-1/2 md:-translate-y-1/2 -translate-x-1/2 w-full md:max-w-md bg-white dark:bg-[#120F30] rounded-t-[36px] md:rounded-[36px] p-6 z-[105] shadow-2xl border-t md:border border-transparent dark:border-purple-900/30 overflow-hidden"
+              dir="rtl"
+            >
+              {/* Header screen indicator */}
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-purple-900/10">
+                <span className="text-[13px] font-black text-purple-630 dark:text-purple-400">الترقية للعضوية الماسية</span>
+                <button 
+                  onClick={() => setIsSubModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-805 text-gray-500 flex items-center justify-center font-black cursor-pointer text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Step 1: Premium Benefits list */}
+              {subStep === 1 && (
+                <div className="space-y-6">
+                  <div className="text-center space-y-2">
+                    <span className="text-5xl animate-bounce block">💎</span>
+                    <h3 className="text-xl font-black text-gray-901 dark:text-white">انضم إلى باقتنا الماسية وافرح بالامتيازات!</h3>
+                    <p className="text-xs text-gray-500 dark:text-purple-300">كن متقدماً ومتميزاً وبسرعة قياسية</p>
+                  </div>
+
+                  <div className="space-y-3 bg-indigo-50/50 dark:bg-[#171448]/50 p-4 rounded-3xl border border-indigo-101/30">
+                    {[
+                      { icon: '💎', title: 'جواهر لا تنتهى للحفظ والمراجعة', desc: 'استمتع بمخرون لا ينفد لمساعدتك بالدراسة' },
+                      { icon: '🚫', title: 'خالٍ من الإعلانات تمامًا', desc: 'تعلم بصفاء فكري تام ودون أي تشتيت للأذهان' },
+                      { icon: '⏰', title: 'التذكير بالحصص والدورات', desc: 'خط مخصص للتذكير اليومي السريع والمبكر' },
+                      { icon: '📅', title: 'جدول دراسة تفاعلي مرن', desc: 'تقويم فخم مدمج مع خطة المذاكرة الأسبوعية' },
+                      { icon: '📊', title: 'تقارير الأداء الفوري بالذكاء الاصطناعي', desc: 'تحليل دقيق ومخصص مع الأستاذ الافتراضي' }
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <span className="text-xl mt-0.5">{item.icon}</span>
+                        <div className="text-right">
+                          <h4 className="text-[12px] font-black text-gray-800 dark:text-gray-150 leading-tight">{item.title}</h4>
+                          <p className="text-[10px] text-gray-450 dark:text-purple-300/40 font-bold leading-tight">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    onClick={() => setSubStep(2)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-650/20 text-center text-xs cursor-pointer"
+                  >
+                    الذهاب لتحديد الخطة
+                  </button>
+                  <button 
+                    onClick={() => setIsSubModalOpen(false)}
+                    className="w-full text-gray-500 text-[11px] font-black text-center block mt-1 hover:underline cursor-pointer"
+                  >
+                    لا شكراً، يرجى الاستمرار مجاناً
+                  </button>
+                </div>
+              )}
+
+              {/* Step 2: Choose Subscription Plan selection */}
+              {subStep === 2 && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-md font-black text-gray-900 dark:text-white">حدد الخطة الماسية المناسبة لك</h3>
+                    <p className="text-[10px] text-gray-400 mt-1">وفر حتى ٤٠٪ اليوم مع الخصومات الإضافية</p>
+                  </div>
+
+                  <div className="space-y-2.5 pt-2">
+                    {[
+                      { months: 1, price: '10.00 $', saving: 'خصم ١٠٪ شهرياً', value: 1 },
+                      { months: 3, price: '26.00 $', saving: 'خصم ٢٠٪ - الأكثر شعبياً', value: 3 },
+                      { months: 6, price: '46.00 $', saving: 'وفر حتى ٣٠٪ ممتازة', value: 6 },
+                      { months: 12, price: '86.00 $', saving: 'وفر حتى ٤٠٪ الاقتصادية', value: 12 }
+                    ].map((item) => (
+                      <div 
+                        key={item.value}
+                        onClick={() => setSelectedPlan(item.value)}
+                        className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                          selectedPlan === item.value 
+                            ? 'bg-purple-50/50 dark:bg-[#1d165c]/70 border-purple-600 text-purple-900 dark:text-white' 
+                            : 'bg-transparent border-gray-150 dark:border-purple-900/10 hover:border-gray-300 dark:hover:border-purple-200/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="radio" 
+                            name="plan" 
+                            checked={selectedPlan === item.value}
+                            onChange={() => setSelectedPlan(item.value)}
+                            className="text-purple-600 focus:ring-purple-500 h-4 w-4" 
+                          />
+                          <div className="text-right">
+                            <span className="font-extrabold text-[12.5px] block">{item.months} {item.months === 1 ? 'شهر' : item.months === 3 ? 'أشهر' : 'أشهر دراسية'}</span>
+                            <span className="text-[9.5px] text-purple-600 dark:text-purple-400 font-extrabold">{item.saving}</span>
+                          </div>
+                        </div>
+                        <span className="font-black text-sm text-purple-650 dark:text-purple-450">{item.price}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2.5 pt-3">
+                    <button 
+                      onClick={() => setSubStep(1)}
+                      className="py-3.5 px-4 bg-gray-100 dark:bg-gray-800 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                    >
+                      عودة
+                    </button>
+                    <button 
+                      onClick={() => setSubStep(3)}
+                      className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black shadow shadow-indigo-650/15 text-xs"
+                    >
+                      الاستمرار لتحديد الدفع
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Select Payment Method */}
+              {subStep === 3 && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-md font-black text-gray-900 dark:text-white">خطوة الدفع الآمن</h3>
+                    <p className="text-[10px] text-gray-400 mt-1">تشفير كامل وحماية لعمليات الشراء بالبكالوريا</p>
+                  </div>
+
+                  <div className="space-y-3 py-2">
+                    {[
+                      { id: 'paypal', name: 'PayPal - المحفظة الإلكترونية', logo: '🌐' },
+                      { id: 'gpay', name: 'Google Pay - الدفع بنقرة واحدة', logo: '🤖' },
+                      { id: 'apple', name: 'Apple Pay - للمستخدمين الموثقين', logo: '🍎' },
+                      { id: 'card', name: 'بطاقة ائتمانية (Visa / CIB / CСР)', logo: '💳', cardDigits: '•••• •••• •••• 4679' }
+                    ].map((method) => (
+                      <div 
+                        key={method.id}
+                        onClick={() => setSelectedPayMethod(method.id)}
+                        className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                          selectedPayMethod === method.id 
+                            ? 'bg-purple-50/50 dark:bg-[#1d165c]/70 border-purple-600 text-purple-900 dark:text-white' 
+                            : 'bg-transparent border-gray-150 dark:border-purple-900/10 hover:border-gray-350 dark:hover:border-purple-200/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{method.logo}</span>
+                          <div className="text-right">
+                            <span className="text-xs font-black block">{method.name}</span>
+                            {method.cardDigits && <span className="text-[9px] font-mono text-gray-500 font-bold block">{method.cardDigits}</span>}
+                          </div>
+                        </div>
+                        <input 
+                          type="radio" 
+                          name="pay" 
+                          checked={selectedPayMethod === method.id}
+                          onChange={() => setSelectedPayMethod(method.id)}
+                          className="text-purple-600 focus:ring-purple-500 h-4 w-4" 
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Coupon card option input */}
+                  <div className="bg-gray-50 dark:bg-purple-950/20 p-3 rounded-xl border border-transparent dark:border-purple-900/15 flex items-center justify-between">
+                    <input 
+                      type="text" 
+                      placeholder="أدخل كود الكوبون الإضافي للتخفيض" 
+                      className="bg-transparent border-none text-[10px] font-bold outline-none flex-1 text-right text-gray-800 dark:text-purple-100" 
+                    />
+                    <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 cursor-pointer">تطبيق</span>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-2">
+                    <button 
+                      onClick={() => setSubStep(2)}
+                      className="py-3.5 px-4 bg-gray-100 dark:bg-gray-800 text-gray-600 rounded-xl font-bold hover:bg-gray-200 cursor-pointer"
+                    >
+                      عودة
+                    </button>
+                    <button 
+                      onClick={handleStartPayment}
+                      disabled={isPaying}
+                      className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black shadow shadow-indigo-650/15 text-xs flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {isPaying ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          <span>جاري تأكيد المعاملة الآمنة...</span>
+                        </>
+                      ) : (
+                        <span>تأكيد ودفع الاستراك الآمن</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Success state with Mascot */}
+              {subStep === 4 && (
+                <div className="space-y-6 text-center">
+                  <div className="py-4 space-y-4">
+                    {/* Animated raindrop/gem mascot smiley face */}
+                    <div className="relative w-32 h-32 mx-auto bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                      <div className="text-6xl animate-bounce">💧✨</div>
+                      {/* Interactive bubbles */}
+                      <span className="absolute top-2 right-2 text-md animate-ping">⚡</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-black text-gray-901 dark:text-white">تمت عملية الدفع بنجاح! 🎉</h3>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold animate-pulse">مرحباً بك كشريك ذهبي ممتاز في معدلي DZ</p>
+                    </div>
+
+                    <p className="text-[11px] text-gray-500 dark:text-purple-300 px-4 leading-relaxed font-semibold">
+                      لقد تم تفعيل اشتراكك الذهبي لمده كاملة بالنجاح. يمكنك الآن الدخول غير المحدود واستخدام الأستاذ الافتراضي دون قيود. واصل تفوقك!
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsSubModalOpen(false)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-4 rounded-xl shadow-lg text-xs cursor-pointer"
+                  >
+                    شكراً لك، هلموا بنا للتعلم!
+                  </button>
+                </div>
+              )}
+
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Create/Edit Post Modal */}
       <CreatePostModal 
@@ -535,26 +1204,26 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white dark:bg-gray-900 rounded-3xl p-6 z-[80] shadow-2xl border border-transparent dark:border-gray-800"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white dark:bg-[#120F30] rounded-3xl p-6 z-[80] shadow-2xl border border-transparent dark:border-purple-900/10"
             >
               <div className="flex flex-col items-center text-center space-y-4" dir="rtl">
-                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mb-2">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mb-2 animate-bounce">
                   <AlertTriangle size={32} />
                 </div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white">حذف المنشور</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium pb-4">
-                  هل أنت متأكد أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.
+                  هل أنت متأكد أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء الإرشادي.
                 </p>
                 <div className="flex gap-3 w-full">
                   <button
                     onClick={() => setPostToDelete(null)}
-                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
                     إلغاء
                   </button>
                   <button
                     onClick={confirmDelete}
-                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-650 transition-colors"
+                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-650 transition-colors cursor-pointer"
                   >
                     حذف
                   </button>
@@ -572,10 +1241,10 @@ function FilterButton({ active, onClick, icon: Icon, label }: any) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap border ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap border cursor-pointer ${
         active 
           ? 'bg-blue-600 text-white border-blue-500 shadow-sm shadow-blue-600/10' 
-          : 'bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-900 hover:border-blue-200 dark:hover:border-blue-500/50'
+          : 'bg-white dark:bg-gray-950 text-gray-650 dark:text-gray-400 border-gray-200 dark:border-gray-900 hover:border-blue-200 dark:hover:border-blue-504/50'
       }`}
     >
       <Icon size={14} />

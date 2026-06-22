@@ -71,10 +71,11 @@ export default function Profile() {
         const data = snapshot.data();
         const userId = auth.currentUser!.uid;
         
-        const [summariesSnap, videosSnap, quizzesSnap] = await Promise.all([
+        const [summariesSnap, videosSnap, quizzesSnap, postsSnap] = await Promise.all([
           getDocs(query(collection(db, 'summaries'), where('user_id', '==', userId))),
           getDocs(query(collection(db, 'watched_videos'), where('user_id', '==', userId))),
-          getDocs(query(collection(db, 'quiz_sessions'), where('user_id', '==', userId)))
+          getDocs(query(collection(db, 'quiz_sessions'), where('user_id', '==', userId))),
+          getDocs(query(collection(db, 'posts'), where('author_id', '==', userId)))
         ]);
 
         const completedQuizzes = quizzesSnap.size;
@@ -86,6 +87,73 @@ export default function Profile() {
           totalQuestions += d.total_questions || 0;
         });
         const successRate = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+
+        // Build elegant, complete, real-time dynamic activities list
+        const dynamicActivities: any[] = [];
+
+        quizzesSnap.forEach(docSnap => {
+          const d = docSnap.data();
+          const timestamp = d.created_at || null;
+          dynamicActivities.push({
+            id: docSnap.id,
+            type: 'quiz',
+            title: `اختبار مادة ${d.subject || 'عامة'} - ${d.chapter || 'غير محدد'}`,
+            date: timestamp ? new Date(timestamp.seconds * 1000).toLocaleDateString('ar-DZ') : (d.date || 'اليوم'),
+            score: `${d.score}/${d.total_questions}`,
+            created_at: timestamp ? timestamp.toDate() : new Date()
+          });
+        });
+
+        summariesSnap.forEach(docSnap => {
+          const d = docSnap.data();
+          const timestamp = d.created_at || null;
+          dynamicActivities.push({
+            id: docSnap.id,
+            type: 'summary',
+            title: `ملخص: ${d.title || d.subject || 'ملخص دراسي مخصص'}`,
+            date: timestamp ? new Date(timestamp.seconds * 1000).toLocaleDateString('ar-DZ') : 'حديثاً',
+            created_at: timestamp ? timestamp.toDate() : new Date()
+          });
+        });
+
+        videosSnap.forEach(docSnap => {
+          const d = docSnap.data();
+          const timestamp = d.created_at || null;
+          dynamicActivities.push({
+            id: docSnap.id,
+            type: 'video',
+            title: `تحليل فيديو: ${d.title || 'فيديو تعليمي من YouTube'}`,
+            date: timestamp ? new Date(timestamp.seconds * 1000).toLocaleDateString('ar-DZ') : 'حديثاً',
+            created_at: timestamp ? timestamp.toDate() : new Date()
+          });
+        });
+
+        postsSnap.forEach(docSnap => {
+          const d = docSnap.data();
+          const timestamp = d.created_at || null;
+          dynamicActivities.push({
+            id: docSnap.id,
+            type: 'post',
+            title: `منشور في المنتدى: ${d.title || d.content?.substring(0, 30) || 'مشاركة سؤال للاستفسار'}`,
+            date: timestamp ? new Date(timestamp.seconds * 1000).toLocaleDateString('ar-DZ') : 'حديثاً',
+            created_at: timestamp ? timestamp.toDate() : new Date()
+          });
+        });
+
+        // Merge any manual preset activities registered under data.activities to align perfectly
+        if (Array.isArray(data.activities)) {
+          data.activities.forEach((act: any) => {
+            if (act && act.id && !dynamicActivities.some(da => da.id === act.id)) {
+              dynamicActivities.push({
+                ...act,
+                created_at: act.created_at ? (act.created_at.seconds ? act.created_at.toDate() : new Date(act.created_at)) : new Date()
+              });
+            }
+          });
+        }
+
+        // Sort by created_at descending
+        dynamicActivities.sort((a, b) => b.created_at - a.created_at);
 
         setUser({
           displayName: data.full_name || auth.currentUser?.displayName || 'مستخدم جديد',
@@ -103,7 +171,7 @@ export default function Profile() {
             completedQuizzes: completedQuizzes,
             successRate: successRate,
           },
-          activities: Array.isArray(data.activities) ? data.activities : []
+          activities: dynamicActivities.slice(0, 8) // Display up to 8 of the latest activities
         });
       } else {
         setUser({
@@ -386,6 +454,9 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+
+            {/* Dynamic Activities List */}
+            <ActivityList activities={user.activities} />
 
             {/* Motivational Action Banner card */}
             <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-5 text-white shadow-lg space-y-4 relative overflow-hidden">

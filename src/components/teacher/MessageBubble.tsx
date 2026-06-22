@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Save } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -12,9 +12,10 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
+  onSave?: (text: string) => void;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+export default function MessageBubble({ message, onSave }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -35,7 +36,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         }`}>
           {message.image && (
             <img 
-              src={message.image} 
+               src={message.image} 
               alt="Uploaded exercise" 
               className="max-w-full rounded-lg mb-3 border border-gray-200"
               referrerPolicy="no-referrer"
@@ -45,9 +46,21 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <ReactMarkdown>{message.text}</ReactMarkdown>
           </div>
         </div>
-        <span className="text-[10px] text-gray-400 mt-1 px-1">
-          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
+        
+        <div className="flex items-center gap-3 mt-1 px-1">
+          {!isUser && onSave && (
+            <button
+              onClick={() => onSave(message.text)}
+              className="text-[10px] text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline font-bold transition-colors"
+            >
+              <Save size={12} />
+              حفظ كملخص دراسي
+            </button>
+          )}
+          <span className="text-[10px] text-gray-400">
+            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
       </div>
     </motion.div>
   );
