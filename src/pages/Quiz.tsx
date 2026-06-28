@@ -179,10 +179,17 @@ export default function Quiz() {
           return;
         }
 
-        // Calculate points based on mode and score
+        // Calculate points and diamonds based on mode and score
         let pointsEarned = finalScore * 10;
-        if (quizMode === 'exam') pointsEarned *= 2;
-        if (quizMode === 'challenge') pointsEarned *= 3;
+        let diamondsEarned = 3;
+        if (quizMode === 'exam') {
+          pointsEarned *= 2;
+          diamondsEarned = 6;
+        }
+        if (quizMode === 'challenge') {
+          pointsEarned *= 3;
+          diamondsEarned = 12;
+        }
 
         await addDoc(collection(db, 'quiz_sessions'), {
           user_id: user.uid,
@@ -197,12 +204,15 @@ export default function Quiz() {
           created_at: serverTimestamp()
         });
 
-        // Update user profile points and level
+        // Update user profile points, level, and diamonds
         const profileRef = doc(db, 'profiles', user.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
-          const currentPoints = profileSnap.data().points || 0;
+          const profileData = profileSnap.data();
+          const currentPoints = profileData.points || 0;
+          const currentDiamonds = profileData.diamonds !== undefined ? profileData.diamonds : 15;
           const newPoints = currentPoints + pointsEarned;
+          const newDiamonds = currentDiamonds + diamondsEarned;
           
           let newLevel = 'مبتدئ';
           if (newPoints >= 10000) newLevel = 'بطل';
@@ -211,6 +221,7 @@ export default function Quiz() {
 
           await updateDoc(profileRef, {
             points: Math.round(newPoints),
+            diamonds: newDiamonds,
             level: newLevel
           });
         }

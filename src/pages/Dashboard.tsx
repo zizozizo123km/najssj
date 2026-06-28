@@ -12,6 +12,7 @@ import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
 import ProfilePreview from '../components/profile/ProfilePreview';
+import { BAC_BRANCHES } from '../data/baccalaureate';
 
 import BacCountdown from '../components/BacCountdown';
 
@@ -53,13 +54,54 @@ export default function Dashboard() {
       if (user) {
         fetchStudentStats(user.uid);
         
-        // Listen to active user's profile
-        const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
+        // Listen to active user's profile with real-time streak updating
+        const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), async (docSnap) => {
           if (docSnap.exists()) {
             const pData = docSnap.data();
             setProfile(pData);
-            if (pData.points) {
+            if (pData.points !== undefined) {
               setStats(prev => ({ ...prev, points: pData.points }));
+            }
+            if (pData.diamonds !== undefined) {
+              setDiamonds(pData.diamonds);
+            } else {
+              await updateDoc(doc(db, 'profiles', user.uid), { diamonds: 15 });
+            }
+            if (pData.streak_days !== undefined) {
+              setStreakDays(pData.streak_days);
+            } else {
+              await updateDoc(doc(db, 'profiles', user.uid), { streak_days: 1 });
+            }
+
+            // Streak check logic
+            const today = new Date().toISOString().split('T')[0];
+            const lastActive = pData.last_active_date;
+            if (!lastActive) {
+              await updateDoc(doc(db, 'profiles', user.uid), {
+                streak_days: 1,
+                last_active_date: today
+              });
+            } else if (lastActive !== today) {
+              const lastActiveDate = new Date(lastActive);
+              const todayDate = new Date(today);
+              const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              if (diffDays === 1) {
+                const newStreak = (pData.streak_days || 0) + 1;
+                const currentDiamonds = pData.diamonds !== undefined ? pData.diamonds : 15;
+                await updateDoc(doc(db, 'profiles', user.uid), {
+                  streak_days: newStreak,
+                  last_active_date: today,
+                  diamonds: currentDiamonds + 2
+                });
+                alert(`🔥 ممتاز! حافظت على سلسلة دراستك لليوم الـ ${newStreak} على التوالي! حصلت على جوهرتين إضافيتين! 💎💎`);
+              } else if (diffDays > 1) {
+                await updateDoc(doc(db, 'profiles', user.uid), {
+                  streak_days: 1,
+                  last_active_date: today
+                });
+              }
             }
           }
         });
@@ -123,13 +165,143 @@ export default function Dashboard() {
       const profileDoc = await getDocs(query(collection(db, 'profiles'), where('__name__', '==', userId)));
       let points = 0;
       let level = 'مبتدئ';
+      let userDiamonds = 12;
+      let claimedMissions: number[] = [];
+      let claimedMissionsDate = '';
+      let branch = 'sciences';
+
       if (!profileDoc.empty) {
         const pData = profileDoc.docs[0].data();
         points = pData.points || 0;
         level = pData.level || 'مبتدئ';
+        userDiamonds = pData.diamonds !== undefined ? pData.diamonds : 15;
+        claimedMissions = pData.claimed_missions || [];
+        claimedMissionsDate = pData.claimed_missions_date || '';
+        branch = pData.branch || 'sciences';
       }
 
       setStats({ summaries: summariesCount, videos: videosCount, successRate: successRate > 100 ? 100 : successRate, points, level });
+
+      // Daily missions logic calculated dynamically
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayQuizzes = quizSnapshot.docs.filter(d => d.data().date === todayStr);
+      
+      const todaySummaries = summariesSnapshot.docs.filter(d => {
+        const ts = d.data().created_at;
+        if (!ts) return false;
+        const dDate = new Date(ts.seconds * 1000).toISOString().split('T')[0];
+        return dDate === todayStr;
+      });
+      const todaySummariesCount = todaySummaries.length;
+      const todayXpPoints = todayQuizzes.reduce((sum, d) => sum + (d.data().points || 0), 0) + (todaySummariesCount * 20);
+
+      const todayQuizzesCount = todayQuizzes.length;
+      const todayChallengesCount = todayQuizzes.filter(d => d.data().mode === 'challenge').length;
+
+      // Auto-reset claimed missions list if day transitioned
+      if (claimedMissionsDate !== todayStr && userId) {
+        claimedMissions = [];
+        await updateDoc(doc(db, 'profiles', userId), {
+          claimed_missions: [],
+          claimed_missions_date: todayStr
+        }).catch(err => console.error("Error updating claimed missions reset:", err));
+      }
+
+      // Map level to target multipliers
+      let diamondTarget = 25;
+      let xpTarget = 40;
+      let quizzesTarget = 2;
+      let challengesTarget = 1;
+
+      if (level === 'بطل') {
+        diamondTarget = 50;
+        xpTarget = 150;
+        quizzesTarget = 3;
+        challengesTarget = 2;
+      } else if (level === 'خبير') {
+        diamondTarget = 40;
+        xpTarget = 100;
+        quizzesTarget = 2;
+        challengesTarget = 2;
+      } else if (level === 'متقدم') {
+        diamondTarget = 30;
+        xpTarget = 60;
+        quizzesTarget = 2;
+        challengesTarget = 1;
+      } else { // 'مبتدئ'
+        diamondTarget = 20;
+        xpTarget = 30;
+        quizzesTarget = 1;
+        challengesTarget = 1;
+      }
+
+      // Custom subjects map for Algerian BAC branches
+      const coreSubjectsMap: Record<string, { name: string; id: string }> = {
+        'sciences': { name: 'علوم الطبيعة والحياة', id: 'svt' },
+        'math': { name: 'الرياضيات', id: 'math' },
+        'tech_math': { name: 'الرياضيات', id: 'math' },
+        'literature': { name: 'الفلسفة', id: 'philosophy' },
+        'languages': { name: 'اللغة الإنجليزية', id: 'english' },
+        'economy': { name: 'التسيير والمحاسبة', id: 'accounting' },
+        'arts': { name: 'الفنون', id: 'arts' }
+      };
+
+      const branchName = BAC_BRANCHES.find(b => b.id === branch)?.name || 'علوم تجريبية';
+      const coreInfo = coreSubjectsMap[branch] || { name: 'علوم الطبيعة والحياة', id: 'svt' };
+      const coreSubjectName = coreInfo.name;
+      
+      const todayCoreQuizzesCount = todayQuizzes.filter(d => {
+        const sub = d.data().subject;
+        return sub && (sub.includes(coreSubjectName) || sub.toLowerCase().includes(coreInfo.id.toLowerCase()));
+      }).length;
+
+      setMissions([
+        { 
+          id: 1, 
+          title: `جمع ${diamondTarget} جوهرة`, 
+          desc: `اكتساب وتجميع الجواهر اللازمة للتحفيز وللخصائص المتميزة`, 
+          target: diamondTarget, 
+          current: userDiamonds, 
+          xp: 40, 
+          icon: '💎', 
+          type: 'diamonds', 
+          claimed: claimedMissions.includes(1) 
+        },
+        { 
+          id: 2, 
+          title: `اكتساب ${xpTarget} نقطة XP اليوم`, 
+          desc: `أكمل اختبارات ومراجعات لرفع مستواك الدراسي لليوم الحالي`, 
+          target: xpTarget, 
+          current: todayXpPoints, 
+          xp: 40, 
+          icon: '⚡', 
+          type: 'xp', 
+          claimed: claimedMissions.includes(2) 
+        },
+        { 
+          id: 3, 
+          title: `اختبار مادة ${coreSubjectName}`, 
+          desc: `حل اختبار في مادتك الأساسية لشعبة ${branchName}`, 
+          target: quizzesTarget, 
+          current: todayCoreQuizzesCount, 
+          xp: 80, 
+          icon: '🎯', 
+          type: 'lessons', 
+          claimed: claimedMissions.includes(3) 
+        },
+        { 
+          id: 4, 
+          title: `إكمال ${challengesTarget} تحدي بكالوريا مصغر`, 
+          desc: `اجتياز وحل التحديات اليومية المخصصة لمستواك (${level})`, 
+          target: challengesTarget, 
+          current: todayChallengesCount, 
+          xp: 120, 
+          icon: '🔥', 
+          type: 'challenge', 
+          claimed: claimedMissions.includes(4) 
+        }
+      ]);
+
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
@@ -177,9 +349,30 @@ export default function Dashboard() {
     // Save strictly to firebase db
     if (currentUserId) {
       try {
+        let currentClaimed: number[] = [];
+        if (profile) {
+          currentClaimed = profile.claimed_missions || [];
+        }
+        
+        const nextClaimed = [...currentClaimed.filter(id => id !== missionId), missionId];
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Award bonus diamonds on claim!
+        let diamondBonus = 5;
+        if (missionId === 3) diamondBonus = 10;
+        if (missionId === 4) diamondBonus = 15;
+
+        const nextDiamonds = (profile?.diamonds !== undefined ? profile.diamonds : 15) + diamondBonus;
+
         await updateDoc(doc(db, 'profiles', currentUserId), {
-          points: addedPoints
+          points: addedPoints,
+          diamonds: nextDiamonds,
+          claimed_missions: nextClaimed,
+          claimed_missions_date: todayStr
         });
+        
+        setDiamonds(nextDiamonds);
+        alert(`🎁 مبروك! لقد استلمت ${xpReward} XP و +${diamondBonus} جوهرة إضافية! 💎✨`);
       } catch (e) {
         console.error("Error saving claimed rewards:", e);
       }

@@ -9,6 +9,11 @@
         "branch": { "type": "string", "description": "User's branch/specialty" },
         "role": { "type": "string", "enum": ["student", "admin"], "description": "User's role" },
         "points": { "type": "integer", "description": "User's points" },
+        "diamonds": { "type": "integer", "description": "User's diamonds" },
+        "streak_days": { "type": "integer", "description": "Consecutive active days" },
+        "last_active_date": { "type": "string", "description": "YYYY-MM-DD last active date" },
+        "claimed_missions": { "type": "array", "description": "IDs of daily missions claimed today" },
+        "claimed_missions_date": { "type": "string", "description": "YYYY-MM-DD of claimed missions" },
         "avatar_url": { "type": "string", "description": "User's avatar URL" },
         "created_at": { "type": "string", "format": "date-time", "description": "Profile creation timestamp" }
       },

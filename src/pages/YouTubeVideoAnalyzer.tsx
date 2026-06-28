@@ -7,7 +7,7 @@ import VideoList from '../components/youtube/VideoList';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import VideoSummary from '../components/youtube/VideoSummary';
 import QuizSection from '../components/youtube/QuizSection';
-import { auth, db, collection, addDoc, serverTimestamp } from '../lib/firebase';
+import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from '../lib/firebase';
 
 interface Video {
   id: string;
@@ -273,7 +273,22 @@ export default function YouTubeVideoAnalyzer() {
         subject: filter !== 'الكل' ? filter : 'عام',
         created_at: serverTimestamp()
       });
-      alert('تم حفظ ملخص الفيديو والتحليل في ملفك الشخصي وعلامات النشاط بنجاح! 💾✨');
+
+      // Award +20 XP points and +2 diamonds as rewards
+      const profileRef = doc(db, 'profiles', auth.currentUser.uid);
+      const profileSnap = await getDoc(profileRef);
+      if (profileSnap.exists()) {
+        const profileData = profileSnap.data();
+        const currentPoints = profileData.points || 0;
+        const currentDiamonds = profileData.diamonds !== undefined ? profileData.diamonds : 15;
+        
+        await updateDoc(profileRef, {
+          points: currentPoints + 20,
+          diamonds: currentDiamonds + 2
+        });
+      }
+
+      alert('تم حفظ ملخص الفيديو والتحليل في ملفك الشخصي وعلامات النشاط بنجاح! 💾✨ وربحت +20 XP و +2 جوهرة! 💎');
     } catch (e) {
       console.error("Error saving summary to Firestore:", e);
       alert('حدث خطأ أثناء حفظ التحليل في قاعدة البيانات.');
