@@ -3,6 +3,8 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
+import { GoogleGenAI } from "@google/genai";
 // @ts-ignore
 import firebaseConfig from "./firebase-applet-config.json" assert { type: "json" };
 
@@ -15,7 +17,7 @@ if (!admin.apps.length) {
     projectId: firebaseConfig.projectId
   });
 }
-const db = admin.firestore();
+const db = getFirestore(undefined, firebaseConfig.firestoreDatabaseId);
 
 async function getYouTubeApiKey(): Promise<string | null> {
   const hardcodedKey = "AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc";
@@ -141,6 +143,134 @@ async function startServer() {
         details: error?.message || String(error),
         code: error?.code
       });
+    }
+  });
+
+  async function getGeminiApiKey(): Promise<string | null> {
+    try {
+      const doc = await db.collection("admin_settings").doc("api_keys").get();
+      if (doc.exists) {
+        const settings = doc.data()?.settings;
+        if (settings?.gemini && Array.isArray(settings.gemini) && settings.gemini.length > 0) {
+          let activeIndex = settings.active_index || 0;
+          if (activeIndex >= settings.gemini.length) {
+            activeIndex = 0;
+          }
+          return settings.gemini[activeIndex].api_key || null;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading Gemini API key on backend:", error);
+    }
+    return process.env.GEMINI_API_KEY || null;
+  }
+
+  // Secure Gemini API Proxy
+  app.post("/api/gemini", async (req, res) => {
+    const { model, contents, config } = req.body;
+    
+    let apiKey = await getGeminiApiKey();
+    if (!apiKey) {
+      return res.status(500).json({ error: "Gemini API key is not configured" });
+    }
+
+    const runGenerate = async (key: string) => {
+      const ai = new GoogleGenAI({ apiKey: key }) as any;
+      return await ai.models.generateContent({
+        model: model || 'gemini-1.5-flash',
+        contents,
+        config
+      });
+    };
+
+    try {
+      const response = await runGenerate(apiKey);
+      res.json(response);
+    } catch (error: any) {
+      console.error("Gemini API Error with primary key:", error);
+      
+      const isLeaked = error.message?.includes("leaked") || error.status === 403;
+      if (isLeaked && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== apiKey) {
+        console.warn("Attempting secure fallback to system GEMINI_API_KEY...");
+        try {
+          const response = await runGenerate(process.env.GEMINI_API_KEY);
+          return res.json(response);
+        } catch (fallbackError: any) {
+          console.error("Gemini fallback API Error:", fallbackError);
+        }
+      }
+      
+      res.status(error.status || 500).json({ 
+        error: "Gemini generation failed", 
+        details: error.message || String(error) 
+      });
+    }
+  });
+
+  // Text to Speech (TTS) API
+  app.post("/api/tts", async (req, res) => {
+    const { text, voice } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+    
+    let apiKey = await getGeminiApiKey();
+    if (!apiKey) {
+      return res.status(500).json({ error: "Gemini API key is not configured" });
+    }
+
+    const runTTS = async (key: string) => {
+      const ai = new GoogleGenAI({ apiKey: key }) as any;
+      const interaction = await ai.interactions.create({
+        model: 'gemini-3.1-flash-tts-preview',
+        input: text,
+        response_modalities: ['AUDIO'],
+        generation_config: {
+          speech_config: [
+            {
+              voice: voice || "kore"
+            }
+          ]
+        }
+      });
+
+      let audioData = null;
+      for (const step of (interaction.steps || [])) {
+        if (step.type === 'model_output') {
+          const audioContent = (step.content as any[])?.find((c: any) => c.type === 'audio');
+          if (audioContent && audioContent.data) {
+            audioData = audioContent.data; // this is base64 string
+            break;
+          }
+        }
+      }
+      return audioData;
+    };
+
+    try {
+      const audioData = await runTTS(apiKey);
+      if (audioData) {
+        return res.json({ audio: audioData });
+      } else {
+        return res.status(500).json({ error: "No audio generated from the model" });
+      }
+    } catch (error: any) {
+      console.error("TTS API error with primary key:", error);
+      
+      const isLeaked = error.message?.includes("leaked") || error.status === 403;
+      if (isLeaked && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== apiKey) {
+        console.warn("Attempting TTS fallback to system GEMINI_API_KEY...");
+        try {
+          const audioData = await runTTS(process.env.GEMINI_API_KEY);
+          if (audioData) {
+            return res.json({ audio: audioData });
+          }
+        } catch (fallbackError: any) {
+          console.error("TTS fallback API Error:", fallbackError);
+        }
+      }
+      
+      res.status(500).json({ error: "TTS generation failed", details: error.message || String(error) });
     }
   });
 

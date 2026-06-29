@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Image as ImageIcon, Sparkles, BookOpen, HelpCircle, Save, Trash2, Loader2, Youtube } from 'lucide-react';
+import { Send, Image as ImageIcon, Sparkles, BookOpen, HelpCircle, Save, Trash2, Loader2, Youtube, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getGeminiConfig } from '../lib/gemini';
 import MessageBubble from '../components/teacher/MessageBubble';
@@ -18,12 +18,15 @@ interface Message {
 export default function VirtualTeacher() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
+  const [isVoiceMode, setIsVoiceMode] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   // ... inside VirtualTeacher component ...
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'model',
-      text: 'مرحباً بك! أنا أستاذك الافتراضي لمساعدتك في التحضير للبكالوريا. يمكنك سؤالي عن أي درس، أو إرسال تمرين لنحله معاً خطوة بخطوة. في أي مادة تريد البدء اليوم؟',
+      text: 'مرحباً بك! أنا أستاذك الافتراضي لمساعدتك في التحضير للبكالوريا. يمكنك سؤالي عن أي درس، أو إرسال تمرين لنحله معاً خطوة بخفوة. في أي مادة تريد البدء اليوم؟',
       timestamp: new Date()
     }
   ]);
@@ -34,6 +37,30 @@ export default function VirtualTeacher() {
   const [image, setImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const unlockAudio = () => {
+    try {
+      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(0);
+        osc.stop(0.01);
+      }
+      const audio = new Audio();
+      audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+      audio.play().catch(() => {});
+    } catch (e) {
+      console.warn('Audio unlock skipped or failed:', e);
+    }
+  };
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -94,7 +121,51 @@ export default function VirtualTeacher() {
     }
   };
 
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+    } else {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("عذراً، متصفحك لا يدعم التعرف على الصوت. يرجى استخدام متصفح Google Chrome.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ar-DZ';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev + (prev ? " " : "") + transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    }
+  };
+
   const sendMessage = async (textOverride?: string) => {
+    // Unlocks browser audio upon user interaction to allow auto-play of subsequent asynchronously loaded TTS voice
+    unlockAudio();
+
     const textToSend = textOverride || input;
     if (!textToSend.trim() && !image) return;
 
@@ -229,13 +300,34 @@ export default function VirtualTeacher() {
             </div>
           </div>
         </div>
-        <select 
-          value={selectedSubject}
-          onChange={(e) => setSelectedSubject(e.target.value)}
-          className="text-xs bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 font-extrabold text-gray-700 dark:text-gray-300 outline-none"
-        >
-          {availableSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-        </select>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const nextMode = !isVoiceMode;
+              setIsVoiceMode(nextMode);
+              if (nextMode) {
+                unlockAudio();
+              }
+            }}
+            className={`p-2 rounded-xl border flex items-center gap-1.5 transition-all text-[11px] font-bold ${
+              isVoiceMode 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900 dark:text-emerald-400 shadow-sm shadow-emerald-500/10' 
+                : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-900 dark:border-gray-800 hover:bg-gray-100'
+            }`}
+            title={isVoiceMode ? "الوضع الصوتي نشط - الأستاذ يتحدث تلقائياً" : "الوضع الصوتي متوقف"}
+          >
+            {isVoiceMode ? <Volume2 size={14} className="animate-bounce" /> : <VolumeX size={14} />}
+            <span>الوضع الصوتي</span>
+          </button>
+
+          <select 
+            value={selectedSubject}
+            onChange={(e) => setSelectedSubject(e.target.value)}
+            className="text-xs bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-blue-500 font-extrabold text-gray-700 dark:text-gray-300 outline-none"
+          >
+            {availableSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+          </select>
+        </div>
       </header>
 
       {/* Chat Area */}
@@ -244,8 +336,13 @@ export default function VirtualTeacher() {
         className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
       >
         <AnimatePresence>
-          {messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} onSave={handleSaveTeacherMessage} />
+          {messages.map((msg, idx) => (
+            <MessageBubble 
+              key={msg.id} 
+              message={msg} 
+              onSave={handleSaveTeacherMessage} 
+              autoPlay={idx === messages.length - 1 && msg.role === 'model'}
+            />
           ))}
           {loading && (
             <motion.div 
@@ -322,9 +419,21 @@ export default function VirtualTeacher() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="اسأل أستاذك عن أي شيء..."
+            placeholder={isListening ? "جاري الاستماع إليك... تحدث الآن" : "اسأل أستاذك عن أي شيء..."}
             className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2"
           />
+          <button 
+            type="button"
+            onClick={toggleListening}
+            className={`p-2.5 rounded-xl transition-all ${
+              isListening 
+                ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/20' 
+                : 'text-gray-500 hover:text-blue-600 hover:bg-gray-200 dark:hover:bg-gray-800'
+            }`}
+            title={isListening ? "إيقاف الاستماع" : "التحدث بصوتك"}
+          >
+            {isListening ? <MicOff size={19} /> : <Mic size={19} />}
+          </button>
           <button 
             onClick={() => sendMessage()}
             disabled={loading || (!input.trim() && !image)}

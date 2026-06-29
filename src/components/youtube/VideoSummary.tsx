@@ -58,7 +58,13 @@ export default function VideoSummary({ summary, onSave, onRate, rating }: VideoS
           <h3>ملخص الدرس</h3>
         </div>
         <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300 leading-relaxed bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
-          <ReactMarkdown>{summary.summary}</ReactMarkdown>
+          <ReactMarkdown>
+            {typeof summary.summary === 'string'
+              ? summary.summary
+              : typeof summary.summary === 'object' && summary.summary !== null
+                ? JSON.stringify(summary.summary)
+                : String(summary.summary || '')}
+          </ReactMarkdown>
         </div>
       </section>
 
@@ -69,7 +75,13 @@ export default function VideoSummary({ summary, onSave, onRate, rating }: VideoS
           <h3>شرح السبورة</h3>
         </div>
         <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300 leading-relaxed bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
-          <ReactMarkdown>{summary.boardExplanation}</ReactMarkdown>
+          <ReactMarkdown>
+            {typeof summary.boardExplanation === 'string'
+              ? summary.boardExplanation
+              : typeof summary.boardExplanation === 'object' && summary.boardExplanation !== null
+                ? JSON.stringify(summary.boardExplanation)
+                : String(summary.boardExplanation || '')}
+          </ReactMarkdown>
         </div>
       </section>
 

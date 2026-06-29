@@ -13,7 +13,7 @@ import {
   ListChecks,
   Database
 } from 'lucide-react';
-import { db, doc, getDoc, setDoc, serverTimestamp } from '../lib/firebase';
+import { auth, db, doc, getDoc, setDoc, serverTimestamp, collection, addDoc, updateDoc, getDocs, query, where } from '../lib/firebase';
 import { getApiKey } from '../lib/apiKeys';
 
 // Representative Annual Programs for Algerian Baccalaureate
@@ -91,6 +91,96 @@ export default function CourseSubject() {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | null>(null);
   const [isFromCache, setIsFromCache] = useState(false);
+  
+  // Custom states for completing lessons and user rewards
+  const [completedVideoIds, setCompletedVideoIds] = useState<string[]>([]);
+  const [userPoints, setUserPoints] = useState<number>(0);
+  const [userDiamonds, setUserDiamonds] = useState<number>(0);
+  const [completing, setCompleting] = useState(false);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        // Fetch completed videos list
+        const watchedSnap = await getDocs(
+          query(collection(db, 'watched_videos'), where('user_id', '==', user.uid))
+        );
+        const ids = watchedSnap.docs.map(doc => doc.data().video_id);
+        setCompletedVideoIds(ids);
+
+        // Fetch user profile stats
+        const profileSnap = await getDoc(doc(db, 'profiles', user.uid));
+        if (profileSnap.exists()) {
+          const pData = profileSnap.data();
+          setUserPoints(pData.points || 0);
+          setUserDiamonds(pData.diamonds !== undefined ? pData.diamonds : 15);
+        }
+      } catch (e) {
+        console.error("Error loading user data in CourseSubject:", e);
+      }
+    };
+
+    loadUserData();
+  }, [selectedVideo]);
+
+  const handleCompleteLesson = async (video: YouTubeVideo) => {
+    const user = auth.currentUser;
+    if (!user) {
+      alert('الرجاء تسجيل الدخول أولاً لتسجيل إكمال الدرس وكسب النقاط!');
+      return;
+    }
+
+    const videoId = video.id.videoId;
+    if (completedVideoIds.includes(videoId)) {
+      alert('لقد أكملت هذا الدرس بالفعل وحصلت على مكافأتك!');
+      return;
+    }
+
+    setCompleting(true);
+    try {
+      // 1. Add to watched_videos so student stats are synced
+      await addDoc(collection(db, 'watched_videos'), {
+        user_id: user.uid,
+        video_id: videoId,
+        title: video.snippet.title,
+        channel: video.snippet.channelTitle || '',
+        thumbnail: video.snippet.thumbnails.high.url || '',
+        created_at: serverTimestamp()
+      });
+
+      // 2. Update profiles document with +20 XP points and +2 diamonds
+      const profileRef = doc(db, 'profiles', user.uid);
+      const profileSnap = await getDoc(profileRef);
+      let nextPoints = userPoints + 20;
+      let nextDiamonds = userDiamonds + 2;
+
+      if (profileSnap.exists()) {
+        const pData = profileSnap.data();
+        nextPoints = (pData.points || 0) + 20;
+        nextDiamonds = (pData.diamonds !== undefined ? pData.diamonds : 15) + 2;
+      }
+
+      await updateDoc(profileRef, {
+        points: nextPoints,
+        diamonds: nextDiamonds
+      });
+
+      // 3. Update local states
+      setCompletedVideoIds(prev => [...prev, videoId]);
+      setUserPoints(nextPoints);
+      setUserDiamonds(nextDiamonds);
+
+      alert('🎉 مبروك! لقد أكملت درس اليوم بنجاح وربحت +20 XP و +2 جوهرة 💎!');
+    } catch (e) {
+      console.error("Error completing lesson:", e);
+      alert('حدث خطأ أثناء حفظ تقدمك الدراسي.');
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   const topics = subjectName ? (ANNUAL_PROGRAMS[subjectName] || ['دروس عامة']) : [];
 
@@ -164,20 +254,34 @@ export default function CourseSubject() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-20 transition-colors">
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-30 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
-          <button 
-            onClick={() => selectedTopic ? setSelectedTopic(null) : navigate('/courses')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-600 dark:text-gray-400"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-xl font-black text-gray-900 dark:text-white">
-              {subjectName} {selectedTopic && <span className="text-blue-600">/ {selectedTopic}</span>}
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {selectedTopic ? 'فيديوهات مختارة' : 'البرنامج السنوي للمادة'}
-            </p>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => selectedTopic ? setSelectedTopic(null) : navigate('/courses')}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-600 dark:text-gray-400"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-xl font-black text-gray-900 dark:text-white">
+                {subjectName} {selectedTopic && <span className="text-blue-600">/ {selectedTopic}</span>}
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {selectedTopic ? 'فيديوهات مختارة' : 'البرنامج السنوي للمادة'}
+              </p>
+            </div>
+          </div>
+
+          {/* Points display widget */}
+          <div className="flex items-center gap-2">
+            <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">{userPoints} XP</span>
+              <span className="text-xs">⚡</span>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/30 px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+              <span className="text-xs font-black text-amber-600 dark:text-amber-400">{userDiamonds}</span>
+              <span className="text-xs">💎</span>
+            </div>
           </div>
         </div>
       </div>
@@ -253,10 +357,10 @@ export default function CourseSubject() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {videos.map((video) => {
-                    // Generate consistent pseudo-random progress meter based on video ID length
+                    const isCompleted = completedVideoIds.includes(video.id.videoId);
                     const isLongId = video.id.videoId.length % 2 === 0;
-                    const progressVal = isLongId ? 65 : 42;
-                    const strokeColor = isLongId ? 'bg-emerald-500' : 'bg-blue-600';
+                    const progressVal = isCompleted ? 100 : (isLongId ? 65 : 42);
+                    const strokeColor = isCompleted ? 'bg-emerald-500' : (isLongId ? 'bg-emerald-500' : 'bg-blue-600');
 
                     return (
                       <motion.div 
@@ -277,6 +381,13 @@ export default function CourseSubject() {
                           <span className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">
                             12:45m
                           </span>
+
+                          {/* Completed Badge overlay */}
+                          {isCompleted && (
+                            <span className="absolute top-2 right-2 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                              <span>✓</span> مكتمل
+                            </span>
+                          )}
                         </div>
                         
                         <div className="p-4 space-y-4 flex-1 flex flex-col justify-between">
@@ -298,13 +409,18 @@ export default function CourseSubject() {
                             </div>
 
                             {/* Rounded teacher avatar circle and indicator details */}
-                            <div className="flex items-center gap-2 pt-1">
-                              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs shadow-sm">
-                                👨‍🏫
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs shadow-sm">
+                                  👨‍🏫
+                                </div>
+                                <span className="text-[9px] font-extrabold text-gray-500 dark:text-gray-400">
+                                  محتوى مميز للمراجعة
+                                </span>
                               </div>
-                              <span className="text-[9px] font-extrabold text-gray-500 dark:text-gray-400">
-                                محتوى مميز للمراجعة
-                              </span>
+                              {isCompleted && (
+                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400">تم كسب +20 XP</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -320,16 +436,54 @@ export default function CourseSubject() {
 
       {/* Video Player Modal */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setSelectedVideo(null)} />
-          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl">
-            <button onClick={() => setSelectedVideo(null)} className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full"><X size={24} /></button>
-            <iframe
-              src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1`}
-              className="w-full h-full"
-              frameBorder="0"
-              allowFullScreen
-            ></iframe>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={() => setSelectedVideo(null)} />
+          <div className="relative w-full max-w-4xl bg-white dark:bg-gray-900 rounded-[32px] overflow-hidden shadow-2xl z-10 flex flex-col transition-all">
+            {/* Header / Title bar */}
+            <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+              <div className="text-right flex-1" dir="rtl">
+                <span className="text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md">شرح فيديو للمادة</span>
+                <h3 className="font-extrabold text-sm text-gray-900 dark:text-white mt-1 line-clamp-1">{selectedVideo.snippet.title}</h3>
+              </div>
+              <button onClick={() => setSelectedVideo(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 rounded-full transition-colors"><X size={20} /></button>
+            </div>
+
+            {/* Video Iframe container */}
+            <div className="w-full aspect-video bg-black">
+              <iframe
+                src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1`}
+                className="w-full h-full"
+                frameBorder="0"
+                allowFullScreen
+              ></iframe>
+            </div>
+
+            {/* Completion reward status bar */}
+            <div className="p-6 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4" dir="rtl">
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">قناة: {selectedVideo.snippet.channelTitle}</span>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed max-w-lg line-clamp-2">
+                  {selectedVideo.snippet.description || "شرح متميز ومفصل لوحدة مادتك الأساسية يساعدك في التحضير للبكالوريا DZ."}
+                </p>
+              </div>
+
+              {completedVideoIds.includes(selectedVideo.id.videoId) ? (
+                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-100 dark:border-emerald-900/30 px-5 py-3 rounded-2xl text-xs font-black">
+                  <span className="text-lg">✅</span>
+                  تم إكمال هذا الدرس بنجاح! (+20 XP و 2💎)
+                </div>
+              ) : (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleCompleteLesson(selectedVideo)}
+                  disabled={completing}
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black px-6 py-3.5 rounded-2xl shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 transition-all disabled:opacity-55"
+                >
+                  <span>⚡</span>
+                  {completing ? 'جاري تسجيل التقدم...' : 'إتمام الدرس وكسب 20 XP و 2💎'}
+                </motion.button>
+              )}
+            </div>
           </div>
         </div>
       )}

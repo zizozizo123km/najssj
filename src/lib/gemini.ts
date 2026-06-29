@@ -2,46 +2,96 @@ import { GoogleGenAI } from "@google/genai";
 import { db, doc, getDoc, updateDoc } from './firebase';
 
 export async function getGeminiConfig() {
-  try {
-    const docRef = doc(db, 'admin_settings', 'api_keys');
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const settings = data.settings;
-      if (settings.gemini && Array.isArray(settings.gemini) && settings.gemini.length > 0) {
-        let activeIndex = settings.active_index || 0;
-        
-        // Ensure index is valid
-        if (activeIndex >= settings.gemini.length) {
-            activeIndex = 0;
+  // Return a mocked secure client that proxies all requests to the backend /api/gemini endpoint
+  const mockClient = {
+    models: {
+      generateContent: async (args: any) => {
+        try {
+          const res = await fetch("/api/gemini", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(args)
+          });
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || errData.details || "Failed to generate content");
+          }
+          return await res.json();
+        } catch (error: any) {
+          console.error("Proxied generateContent error:", error);
+          throw error;
         }
-
-        const selected = settings.gemini[activeIndex];
+      }
+    },
+    chats: {
+      create: (chatArgs: any) => {
+        const history: any[] = chatArgs?.history || [];
+        const systemInstruction = chatArgs?.config?.systemInstruction;
+        const model = chatArgs?.model;
         
         return {
-          client: new GoogleGenAI({ apiKey: selected.api_key }),
-          model: selected.model_name || 'gemini-1.5-flash',
-          activeIndex,
-          allSettings: settings
+          sendMessage: async (sendArgs: any) => {
+            const messageText = typeof sendArgs === "string" ? sendArgs : sendArgs.message;
+            
+            const contents = [
+              ...history,
+              { role: "user", parts: [{ text: messageText }] }
+            ];
+            
+            const config: any = {};
+            if (systemInstruction) {
+              config.systemInstruction = systemInstruction;
+            }
+            if (chatArgs?.config?.temperature !== undefined) {
+              config.temperature = chatArgs.config.temperature;
+            }
+            
+            try {
+              const res = await fetch("/api/gemini", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  model: model || "gemini-1.5-flash",
+                  contents,
+                  config
+                })
+              });
+              
+              if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || errData.details || "Failed to send message");
+              }
+              
+              const responseData = await res.json();
+              
+              history.push({ role: "user", parts: [{ text: messageText }] });
+              history.push({ role: "model", parts: [{ text: responseData.text }] });
+              
+              return responseData;
+            } catch (error: any) {
+              console.error("Proxied sendMessage error:", error);
+              throw error;
+            }
+          }
         };
       }
     }
-  } catch (error) {
-    console.error("Error fetching Gemini config:", error);
-  }
-  throw new Error("Gemini API key is missing or invalid in Firestore.");
+  };
+
+  return {
+    client: mockClient as any,
+    model: "gemini-1.5-flash",
+    activeIndex: 0,
+    allSettings: {}
+  };
 }
 
-async function rotateKey(currentIndex: number, allSettings: any) {
-    const nextIndex = (currentIndex + 1) % allSettings.gemini.length;
-    await updateDoc(doc(db, 'admin_settings', 'api_keys'), {
-        'settings.active_index': nextIndex
-    });
-    return nextIndex;
-}
-
-export async function askAI(prompt: string, context: string = "", retryCount: number = 0) {
-  const { client: ai, model, activeIndex, allSettings } = await getGeminiConfig();
+export async function askAI(prompt: string, context: string = "") {
+  const { client: ai, model } = await getGeminiConfig();
 
   const systemInstruction = `
     You are an AI assistant for Algerian Baccalaureate students. 
@@ -62,21 +112,19 @@ export async function askAI(prompt: string, context: string = "", retryCount: nu
 
     return response.text;
   } catch (error: any) {
-    // Check if it's a rate limit error (429) or other quota limits
-    if ((error.status === 429 || error.message?.includes('quota')) && retryCount < allSettings.gemini.length - 1) {
-        console.warn(`Rate limit reached for key index ${activeIndex}, rotating...`);
-        await rotateKey(activeIndex, allSettings);
-        return askAI(prompt, context, retryCount + 1);
-    }
-    
-    // If we've exhausted all Gemini keys or it's a critical error, try OpenRouter fallback
-    console.warn("Gemini Error or exhausted. Trying OpenRouter Fallback...", error.message);
+    console.warn("Gemini Error. Trying OpenRouter Fallback...", error.message);
     try {
-        return await askOpenRouter(prompt, systemInstruction, allSettings);
+        // Fallback to OpenRouter via client-side fetch using user settings if available
+        const docRef = doc(db, 'admin_settings', 'api_keys');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const settings = docSnap.data().settings;
+          return await askOpenRouter(prompt, systemInstruction, settings);
+        }
     } catch (fallbackError: any) {
         console.error("Critical AI Failure (Gemini and OpenRouter):", fallbackError);
-        throw error; // Throw original error if fallback also fails
     }
+    throw error;
   }
 }
 
@@ -92,7 +140,7 @@ async function askOpenRouter(prompt: string, systemInstruction: string, allSetti
     headers: {
       "Authorization": `Bearer ${selected.api_key}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": window.location.origin, // Required by OpenRouter potentially
+      "HTTP-Referer": window.location.origin,
       "X-Title": "Bac DZ App"
     },
     body: JSON.stringify({

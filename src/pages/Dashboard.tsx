@@ -7,7 +7,7 @@ import {
   Gem, Check, ArrowRight, ShieldAlert, Award
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit, updateDoc } from '../lib/firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit, updateDoc, addDoc } from '../lib/firebase';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
@@ -37,9 +37,33 @@ export default function Dashboard() {
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [subStep, setSubStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedPlan, setSelectedPlan] = useState<number>(3); // default 3 Months
-  const [selectedPayMethod, setSelectedPayMethod] = useState<string>('gpay');
+  const [selectedPayMethod, setSelectedPayMethod] = useState<string>('baridimob');
   const [isPaying, setIsPaying] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'weekly' | 'alltime'>('weekly');
+
+  // --- Fully-Fledged Premium Form States ---
+  const [couponCode, setCouponCode] = useState('');
+  const [isCouponApplied, setIsCouponApplied] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0); // e.g. 100 for 100% free
+
+  // Card details
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardFocused, setCardFocused] = useState(false);
+
+  // BaridiMob / CCP details
+  const [ccpSenderName, setCcpSenderName] = useState('');
+  const [ccpTransactionRef, setCcpTransactionRef] = useState('');
+  const [ccpReceiptPreview, setCcpReceiptPreview] = useState<string | null>(null);
+
+  // PayPal details
+  const [paypalEmail, setPaypalEmail] = useState('');
+  const [paypalPassword, setPaypalPassword] = useState('');
+  
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   const [missions, setMissions] = useState([
     { id: 1, title: 'احصل على 25 جوهرة', desc: 'كل دقيقة مراجعة تمنحك فرصة', target: 25, current: 12, xp: 40, icon: '💎', type: 'diamonds', claimed: false },
@@ -73,8 +97,8 @@ export default function Dashboard() {
               await updateDoc(doc(db, 'profiles', user.uid), { streak_days: 1 });
             }
 
-            // Streak check logic
-            const today = new Date().toISOString().split('T')[0];
+            // Streak check logic using local timezone date (real days)
+            const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
             const lastActive = pData.last_active_date;
             if (!lastActive) {
               await updateDoc(doc(db, 'profiles', user.uid), {
@@ -82,10 +106,14 @@ export default function Dashboard() {
                 last_active_date: today
               });
             } else if (lastActive !== today) {
-              const lastActiveDate = new Date(lastActive);
-              const todayDate = new Date(today);
-              const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              const [y1, m1, d1] = lastActive.split('-').map(Number);
+              const [y2, m2, d2] = today.split('-').map(Number);
+              
+              const d1Obj = new Date(y1, m1 - 1, d1);
+              const d2Obj = new Date(y2, m2 - 1, d2);
+              
+              const diffTime = Math.abs(d2Obj.getTime() - d1Obj.getTime());
+              const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
               
               if (diffDays === 1) {
                 const newStreak = (pData.streak_days || 0) + 1;
@@ -193,7 +221,23 @@ export default function Dashboard() {
         return dDate === todayStr;
       });
       const todaySummariesCount = todaySummaries.length;
-      const todayXpPoints = todayQuizzes.reduce((sum, d) => sum + (d.data().points || 0), 0) + (todaySummariesCount * 20);
+
+      // Calculate today's watched videos dynamically
+      const todayVideos = videosSnapshot.docs.filter(d => {
+        const ts = d.data().created_at;
+        if (!ts) return false;
+        let dDate = '';
+        if (ts.seconds) {
+          dDate = new Date(ts.seconds * 1000).toISOString().split('T')[0];
+        } else {
+          dDate = new Date(ts).toISOString().split('T')[0];
+        }
+        return dDate === todayStr;
+      });
+      const todayVideosCount = todayVideos.length;
+
+      // Total XP today = (quizzes points) + (summaries * 20) + (completed video lessons * 20)
+      const todayXpPoints = todayQuizzes.reduce((sum, d) => sum + (d.data().points || 0), 0) + (todaySummariesCount * 20) + (todayVideosCount * 20);
 
       const todayQuizzesCount = todayQuizzes.length;
       const todayChallengesCount = todayQuizzes.filter(d => d.data().mode === 'challenge').length;
@@ -235,7 +279,30 @@ export default function Dashboard() {
         challengesTarget = 1;
       }
 
-      // Custom subjects map for Algerian BAC branches
+      // Helper to identify core subjects according to the branch/coordination
+      const getBranchCoreSubjects = (b: string): string[] => {
+        switch (b) {
+          case 'sciences':
+            return ['علوم الطبيعة والحياة', 'الفيزياء', 'الرياضيات', 'svt', 'physics', 'math'];
+          case 'math':
+            return ['الرياضيات', 'الفيزياء', 'math', 'physics'];
+          case 'tech_math':
+            return ['الرياضيات', 'الفيزياء', 'التكنولوجيا', 'math', 'physics', 'tech'];
+          case 'literature':
+            return ['الفلسفة', 'اللغة العربية وآدابها', 'اللغة العربية', 'philosophy', 'arabic'];
+          case 'languages':
+            return ['اللغة الإنجليزية', 'اللغة الفرنسية', 'اللغة الألمانية', 'اللغة الإسبانية', 'اللغة الإيطالية', 'english', 'french', 'german', 'spanish', 'italian'];
+          case 'economy':
+            return ['التسيير والمحاسبة', 'الاقتصاد', 'القانون', 'accounting', 'economy', 'law'];
+          case 'arts':
+            return ['الفنون', 'arts'];
+          default:
+            return ['علوم الطبيعة والحياة', 'الرياضيات', 'الفيزياء', 'svt', 'math', 'physics'];
+        }
+      };
+
+      const branchName = BAC_BRANCHES.find(b => b.id === branch)?.name || 'علوم تجريبية';
+      
       const coreSubjectsMap: Record<string, { name: string; id: string }> = {
         'sciences': { name: 'علوم الطبيعة والحياة', id: 'svt' },
         'math': { name: 'الرياضيات', id: 'math' },
@@ -245,25 +312,25 @@ export default function Dashboard() {
         'economy': { name: 'التسيير والمحاسبة', id: 'accounting' },
         'arts': { name: 'الفنون', id: 'arts' }
       };
-
-      const branchName = BAC_BRANCHES.find(b => b.id === branch)?.name || 'علوم تجريبية';
       const coreInfo = coreSubjectsMap[branch] || { name: 'علوم الطبيعة والحياة', id: 'svt' };
       const coreSubjectName = coreInfo.name;
-      
+
+      const coreSubjectsList = getBranchCoreSubjects(branch);
       const todayCoreQuizzesCount = todayQuizzes.filter(d => {
         const sub = d.data().subject;
-        return sub && (sub.includes(coreSubjectName) || sub.toLowerCase().includes(coreInfo.id.toLowerCase()));
+        if (!sub) return false;
+        return coreSubjectsList.some(coreSub => sub.toLowerCase().includes(coreSub.toLowerCase()));
       }).length;
 
       setMissions([
         { 
           id: 1, 
-          title: `جمع ${diamondTarget} جوهرة`, 
-          desc: `اكتساب وتجميع الجواهر اللازمة للتحفيز وللخصائص المتميزة`, 
-          target: diamondTarget, 
-          current: userDiamonds, 
+          title: `إتمام درس فيديو مادة أساسية`, 
+          desc: `شاهد درسًا تعليميًا في مادتك لشعبة ${branchName} وأكمله بالكامل`, 
+          target: 1, 
+          current: todayVideosCount, 
           xp: 40, 
-          icon: '💎', 
+          icon: '📺', 
           type: 'diamonds', 
           claimed: claimedMissions.includes(1) 
         },
@@ -379,13 +446,119 @@ export default function Dashboard() {
     }
   };
 
-  const handleStartPayment = () => {
+  const handleApplyCoupon = (code: string) => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) {
+      setCouponError('الرجاء إدخال الكود أولاً');
+      return;
+    }
+
+    if (['BAC2026', 'DZVIP', 'MOUADALY100', 'FREEGOLD'].includes(trimmed)) {
+      setIsCouponApplied(true);
+      setCouponDiscount(100);
+      setCouponError('');
+    } else if (trimmed === 'DZ50') {
+      setIsCouponApplied(true);
+      setCouponDiscount(50);
+      setCouponError('');
+    } else if (trimmed === 'STUDENT30') {
+      setIsCouponApplied(true);
+      setCouponDiscount(30);
+      setCouponError('');
+    } else {
+      setCouponError('كود الكوبون غير صحيح أو منتهي الصلاحية');
+      setIsCouponApplied(false);
+      setCouponDiscount(0);
+    }
+  };
+
+  const getPlanPrice = () => {
+    const prices: Record<number, number> = { 1: 10, 3: 26, 6: 46, 12: 86 };
+    const original = prices[selectedPlan] || 26;
+    const discount = (original * couponDiscount) / 100;
+    return {
+      original,
+      discount,
+      final: original - discount
+    };
+  };
+
+  const handleStartPayment = async () => {
+    const { final } = getPlanPrice();
+
+    if (final > 0) {
+      if (selectedPayMethod === 'baridimob') {
+        if (!ccpSenderName.trim()) {
+          alert('الرجاء إدخال اسم مرسل الحوالة الكامل');
+          return;
+        }
+        if (!ccpTransactionRef.trim() || ccpTransactionRef.trim().length < 6) {
+          alert('الرجاء إدخال رقم المعاملة بشكل صحيح (على الأقل 6 أرقام)');
+          return;
+        }
+      } else if (selectedPayMethod === 'card') {
+        if (cardNumber.replace(/\s/g, '').length !== 16) {
+          alert('الرجاء إدخال رقم البطاقة الائتمانية بشكل صحيح (16 رقماً)');
+          return;
+        }
+        if (!cardHolder.trim()) {
+          alert('الرجاء إدخال اسم حامل البطاقة');
+          return;
+        }
+        const expiryRegex = /^(0[1-9]|1[0-2])\/?([0-9]{2})$/;
+        if (!expiryRegex.test(cardExpiry)) {
+          alert('الرجاء إدخال تاريخ انتهاء الصلاحية بشكل صحيح MM/YY');
+          return;
+        }
+        if (cardCvv.length < 3) {
+          alert('الرجاء إدخال رمز الأمان CVV بشكل صحيح');
+          return;
+        }
+      } else if (selectedPayMethod === 'paypal') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(paypalEmail)) {
+          alert('الرجاء إدخال بريد إلكتروني صالح لحساب PayPal');
+          return;
+        }
+        if (paypalPassword.length < 6) {
+          alert('الرجاء إدخال كلمة مرور حساب PayPal بشكل صحيح');
+          return;
+        }
+      }
+    }
+
     setIsPaying(true);
+
+    if (currentUserId) {
+      try {
+        const dbFields = {
+          userId: currentUserId,
+          userName: profile?.full_name || 'طالب',
+          userEmail: auth.currentUser?.email || '',
+          planMonths: selectedPlan,
+          originalPrice: getPlanPrice().original,
+          discount: getPlanPrice().discount,
+          finalPrice: final,
+          paymentMethod: selectedPayMethod,
+          couponUsed: isCouponApplied ? couponCode.trim().toUpperCase() : null,
+          timestamp: new Date().toISOString(),
+          status: 'completed',
+          senderName: selectedPayMethod === 'baridimob' ? ccpSenderName : null,
+          transactionRef: selectedPayMethod === 'baridimob' ? ccpTransactionRef : null,
+          receiptPreview: selectedPayMethod === 'baridimob' ? ccpReceiptPreview : null,
+          cardNumberMasked: selectedPayMethod === 'card' ? `•••• •••• •••• ${cardNumber.replace(/\s/g, '').slice(-4)}` : null,
+        };
+        await addDoc(collection(db, 'premium_subscriptions'), dbFields);
+      } catch (e) {
+        console.error("Error logging subscription request:", e);
+      }
+    }
+
     setTimeout(() => {
       setIsPaying(false);
       setSubStep(4);
       handleUnlockPremium();
-    }, 2000);
+    }, 2500);
   };
 
   const handleUnlockPremium = async () => {
@@ -406,6 +579,8 @@ export default function Dashboard() {
       }
     }
   };
+
+  const isAdmin = profile?.role === 'admin' || auth.currentUser?.email === 'nacero123@gmail.com' || auth.currentUser?.email === 'dzs325105@gmail.com';
 
   const filteredFeed = activeFilter === 'all' 
     ? feed 
@@ -439,6 +614,60 @@ export default function Dashboard() {
   const firstPlace = podiumWinners[0] || { full_name: 'مريم الصالح', points: 948, id: 'mock-1', avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' };
   const secondPlace = podiumWinners[1] || { full_name: 'أحمد الجزائري', points: 872, id: 'mock-2', avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' };
   const thirdPlace = podiumWinners[2] || { full_name: 'أمينة بن يوسف', points: 769, id: 'mock-3', avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150' };
+
+  // Dynamically prepare weekly active days list for the "شعلة الاتساق" calendar
+  const getDynamicWeekDays = () => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const daysOfWeekAr = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
+    const daysOfWeekEn = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    
+    const now = new Date();
+    const currentDay = now.getDay();
+    // Offset to find Monday of this week (Sunday is 0, Monday is 1...)
+    const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
+    
+    const mondayDate = new Date(now);
+    mondayDate.setDate(now.getDate() + mondayOffset);
+    
+    const weekDays = [];
+    const lastActiveDateStr = profile?.last_active_date;
+    const streakDaysCount = streakDays || 0;
+    
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mondayDate);
+      d.setDate(mondayDate.getDate() + i);
+      const dateStr = d.toLocaleDateString('en-CA');
+      
+      let isActive = false;
+      if (lastActiveDateStr && streakDaysCount > 0) {
+        const [y1, m1, d1] = lastActiveDateStr.split('-').map(Number);
+        const [y2, m2, d2] = dateStr.split('-').map(Number);
+        
+        const lastActiveObj = new Date(y1, m1 - 1, d1);
+        const thisDayObj = new Date(y2, m2 - 1, d2);
+        
+        const diffTime = lastActiveObj.getTime() - thisDayObj.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays >= 0 && diffDays < streakDaysCount) {
+          isActive = true;
+        }
+      }
+      
+      const isCurrent = dateStr === todayStr;
+      
+      weekDays.push({
+        label: daysOfWeekAr[i],
+        labelShort: daysOfWeekEn[i],
+        active: isActive,
+        current: isCurrent,
+        dateStr
+      });
+    }
+    return weekDays;
+  };
+
+  const dynamicWeekDays = getDynamicWeekDays();
 
   return (
     <div className="max-w-md md:max-w-7xl mx-auto min-h-screen bg-[#F3F7FA] dark:bg-[#070514] pb-28 md:pb-12 font-sans transition-colors relative antialiased px-4 md:px-8 shadow-inner" dir="rtl">
@@ -553,15 +782,7 @@ export default function Dashboard() {
 
             {/* Calendar Days */}
             <div className="grid grid-cols-7 gap-2.5 pt-2">
-              {[
-                { label: 'الاثنين', active: true, labelShort: 'Mo' },
-                { label: 'الثلاثاء', active: true, labelShort: 'Tu' },
-                { label: 'الأربعاء', active: true, labelShort: 'We' },
-                { label: 'الخميس', active: true, labelShort: 'Th' },
-                { label: 'الجمعة', active: true, labelShort: 'Fr' },
-                { label: 'السبت', active: false, labelShort: 'Sa', current: true },
-                { label: 'الأحد', active: false, labelShort: 'Su' }
-              ].map((day, idx) => (
+              {dynamicWeekDays.map((day, idx) => (
                 <div key={idx} className="flex flex-col items-center">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all border ${
                     day.active 
@@ -922,8 +1143,8 @@ export default function Dashboard() {
                       key={item.id} 
                       item={item} 
                       onClick={() => console.log('Open', item.id)}
-                      onDelete={item.authorId === currentUserId ? handleDeletePost : undefined}
-                      onEdit={item.authorId === currentUserId ? handleEditPost : undefined}
+                      onDelete={item.authorId === currentUserId || isAdmin ? handleDeletePost : undefined}
+                      onEdit={item.authorId === currentUserId || isAdmin ? handleEditPost : undefined}
                     />
                   ))
                 ) : (
@@ -1253,7 +1474,7 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Step 3: Select Payment Method */}
+              {/* Step 3: Select Payment Method & Detailed Form */}
               {subStep === 3 && (
                 <div className="space-y-4">
                   <div className="text-center">
@@ -1261,69 +1482,354 @@ export default function Dashboard() {
                     <p className="text-[10px] text-gray-400 mt-1">تشفير كامل وحماية لعمليات الشراء بالبكالوريا</p>
                   </div>
 
-                  <div className="space-y-3 py-2">
+                  {/* Payment Method Selector Grid */}
+                  <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: 'paypal', name: 'PayPal - المحفظة الإلكترونية', logo: '🌐' },
-                      { id: 'gpay', name: 'Google Pay - الدفع بنقرة واحدة', logo: '🤖' },
-                      { id: 'apple', name: 'Apple Pay - للمستخدمين الموثقين', logo: '🍎' },
-                      { id: 'card', name: 'بطاقة ائتمانية (Visa / CIB / CСР)', logo: '💳', cardDigits: '•••• •••• •••• 4679' }
+                      { id: 'baridimob', name: 'بريدي موب / CCP', logo: '📬' },
+                      { id: 'card', name: 'الذهبية / الفيزا', logo: '💳' },
+                      { id: 'paypal', name: 'بايبال PayPal', logo: '🌐' },
+                      { id: 'coupon', name: 'تفعيل بالكوبون', logo: '🎁' }
                     ].map((method) => (
-                      <div 
+                      <button
                         key={method.id}
+                        type="button"
                         onClick={() => setSelectedPayMethod(method.id)}
-                        className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                          selectedPayMethod === method.id 
-                            ? 'bg-purple-50/50 dark:bg-[#1d165c]/70 border-purple-600 text-purple-900 dark:text-white' 
-                            : 'bg-transparent border-gray-150 dark:border-purple-900/10 hover:border-gray-350 dark:hover:border-purple-200/30'
+                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                          selectedPayMethod === method.id
+                            ? 'bg-purple-50/50 dark:bg-[#1d165c]/70 border-purple-600 text-purple-900 dark:text-white'
+                            : 'bg-transparent border-gray-150 dark:border-purple-900/10 hover:border-gray-250 dark:hover:border-purple-200/30'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">{method.logo}</span>
-                          <div className="text-right">
-                            <span className="text-xs font-black block">{method.name}</span>
-                            {method.cardDigits && <span className="text-[9px] font-mono text-gray-500 font-bold block">{method.cardDigits}</span>}
-                          </div>
-                        </div>
-                        <input 
-                          type="radio" 
-                          name="pay" 
-                          checked={selectedPayMethod === method.id}
-                          onChange={() => setSelectedPayMethod(method.id)}
-                          className="text-purple-600 focus:ring-purple-500 h-4 w-4" 
-                        />
-                      </div>
+                        <span className="text-2xl mb-1">{method.logo}</span>
+                        <span className="text-[11px] font-black">{method.name}</span>
+                      </button>
                     ))}
                   </div>
 
-                  {/* Coupon card option input */}
-                  <div className="bg-gray-50 dark:bg-purple-950/20 p-3 rounded-xl border border-transparent dark:border-purple-900/15 flex items-center justify-between">
-                    <input 
-                      type="text" 
-                      placeholder="أدخل كود الكوبون الإضافي للتخفيض" 
-                      className="bg-transparent border-none text-[10px] font-bold outline-none flex-1 text-right text-gray-800 dark:text-purple-100" 
-                    />
-                    <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 cursor-pointer">تطبيق</span>
+                  {/* Dynamic Form Area Based on Selected Method */}
+                  <div className="bg-gray-50/70 dark:bg-[#171448]/30 p-4 rounded-3xl border border-gray-100 dark:border-purple-900/10 space-y-3">
+                    {/* Method 1: BaridiMob / CCP */}
+                    {selectedPayMethod === 'baridimob' && (
+                      <div className="space-y-3" dir="rtl">
+                        <div className="bg-indigo-50/40 dark:bg-purple-950/40 p-3 rounded-2xl border border-indigo-100/30 text-right space-y-1.5">
+                          <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 block mb-1">المعلومات البريدية للدفع:</span>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">الحساب الجاري CCP:</span>
+                            <span className="font-mono font-black text-gray-800 dark:text-white flex items-center gap-1">
+                              0021998522 <span className="text-[10px] text-purple-500">مفتاح 44</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText('0021998522');
+                                  setCopiedText('ccp');
+                                  setTimeout(() => setCopiedText(null), 2000);
+                                }}
+                                className="text-[9px] text-blue-500 hover:underline mr-1 cursor-pointer"
+                              >
+                                {copiedText === 'ccp' ? '✓ تم' : 'نسخ'}
+                              </button>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">رقم RIP بريدي موب:</span>
+                            <span className="font-mono font-black text-gray-800 dark:text-white flex items-center gap-1 text-[11px]">
+                              00799999002199852244
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText('00799999002199852244');
+                                  setCopiedText('rip');
+                                  setTimeout(() => setCopiedText(null), 2000);
+                                }}
+                                className="text-[9px] text-blue-500 hover:underline mr-1 cursor-pointer"
+                              >
+                                {copiedText === 'rip' ? '✓ تم' : 'نسخ'}
+                              </button>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">اسم صاحب الحساب:</span>
+                            <span className="font-black text-gray-800 dark:text-white">ب. ناصر</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-right">
+                          <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">اسم مرسل الحوالة الكامل:</label>
+                          <input
+                            type="text"
+                            value={ccpSenderName}
+                            onChange={(e) => setCcpSenderName(e.target.value)}
+                            placeholder="مثال: محمد بلقاسم"
+                            className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2.5 text-xs font-bold outline-none text-right text-gray-800 dark:text-white focus:border-purple-500"
+                          />
+                        </div>
+
+                        <div className="space-y-2 text-right">
+                          <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">رقم معاملة التحويل (10 أرقام فما فوق):</label>
+                          <input
+                            type="text"
+                            value={ccpTransactionRef}
+                            onChange={(e) => setCcpTransactionRef(e.target.value.replace(/\D/g, ''))}
+                            placeholder="رقم المعاملة أو رقم العملية من الوصل"
+                            className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2.5 text-xs font-mono font-bold outline-none text-right text-gray-800 dark:text-white focus:border-purple-500"
+                          />
+                        </div>
+
+                        {/* Drag and Drop File Receipt Preview */}
+                        <div className="space-y-1 text-right">
+                          <span className="text-[11px] font-black text-gray-600 dark:text-gray-300">لقطة شاشة أو صورة الوصل (اختياري):</span>
+                          <div className="relative border-2 border-dashed border-gray-200 dark:border-purple-900/20 rounded-2xl p-4 flex flex-col items-center justify-center bg-white dark:bg-[#120F30] cursor-pointer hover:bg-gray-100/50 transition-colors">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (event) => {
+                                    setCcpReceiptPreview(event.target?.result as string);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                            {ccpReceiptPreview ? (
+                              <div className="relative w-full flex flex-col items-center">
+                                <img src={ccpReceiptPreview} alt="Receipt preview" className="h-20 object-contain rounded" />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCcpReceiptPreview(null);
+                                  }}
+                                  className="mt-2 text-[9px] text-red-500 font-bold hover:underline cursor-pointer"
+                                >
+                                  إزالة الصورة
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-center space-y-1">
+                                <span className="text-2xl">📸</span>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400">انقر أو اسحب صورة الوصل هنا</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Method 2: Credit Card / Edahabia */}
+                    {selectedPayMethod === 'card' && (
+                      <div className="space-y-4 text-right">
+                        {/* Interactive Credit Card Widget */}
+                        <div className="relative w-full h-36 rounded-2xl bg-gradient-to-br from-purple-700 via-indigo-800 to-indigo-950 p-4 text-white overflow-hidden shadow-xl border border-white/10 flex flex-col justify-between">
+                          <div className="flex justify-between items-start">
+                            <div className="flex gap-2">
+                              <div className="w-8 h-5 rounded bg-yellow-400/80 flex items-center justify-center font-mono text-[9px] text-indigo-950 font-black">CHIP</div>
+                              {cardNumber.startsWith('6281') && (
+                                <div className="px-1.5 py-0.5 rounded bg-amber-500 text-[8px] font-black tracking-wider text-white shadow animate-pulse">الذهبية</div>
+                              )}
+                            </div>
+                            <span className="text-xs font-black italic tracking-widest text-purple-200">معدلي DZ</span>
+                          </div>
+                          <div className="font-mono text-md tracking-[0.15em] font-medium text-center text-gray-100">
+                            {cardNumber ? cardNumber.replace(/(\d{4})/g, '$1 ').trim().slice(0, 19) : '•••• •••• •••• ••••'}
+                          </div>
+                          <div className="flex justify-between items-end" dir="rtl">
+                            <div className="max-w-[150px]">
+                              <div className="text-[7px] text-gray-400 uppercase tracking-wider">حامل البطاقة</div>
+                              <div className="font-mono text-[10px] tracking-wider truncate uppercase">{cardHolder || 'Cardholder Name'}</div>
+                            </div>
+                            <div className="flex gap-4">
+                              <div>
+                                <div className="text-[7px] text-gray-400 uppercase tracking-wider">نهاية الصلاحية</div>
+                                <div className="font-mono text-[10px] tracking-wider">{cardExpiry || 'MM/YY'}</div>
+                              </div>
+                              <div>
+                                <div className="text-[7px] text-gray-400 uppercase tracking-wider">CVC</div>
+                                <div className="font-mono text-[10px] tracking-wider">{cardCvv || '•••'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Inputs */}
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">رقم البطاقة (16 رقم):</label>
+                          <input
+                            type="text"
+                            maxLength={19}
+                            value={cardNumber}
+                            onChange={(e) => {
+                              let v = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+                              let formatted = '';
+                              for (let i = 0; i < v.length; i++) {
+                                if (i > 0 && i % 4 === 0) formatted += ' ';
+                                formatted += v[i];
+                              }
+                              setCardNumber(formatted);
+                            }}
+                            placeholder="6281 •••• •••• ••••"
+                            className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none text-right text-gray-800 dark:text-white focus:border-purple-500"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">اسم صاحب البطاقة الكامل:</label>
+                          <input
+                            type="text"
+                            value={cardHolder}
+                            onChange={(e) => setCardHolder(e.target.value)}
+                            placeholder="مثال: BEN NACER NACER"
+                            className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2 text-xs font-bold outline-none text-right text-gray-800 dark:text-white focus:border-purple-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">تاريخ الانتهاء:</label>
+                            <input
+                              type="text"
+                              maxLength={5}
+                              value={cardExpiry}
+                              onChange={(e) => {
+                                let v = e.target.value.replace(/\D/g, '');
+                                if (v.length > 2) {
+                                  v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                }
+                                setCardExpiry(v);
+                              }}
+                              placeholder="MM/YY"
+                              className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none text-center text-gray-800 dark:text-white focus:border-purple-500"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">رمز الأمان CVC:</label>
+                            <input
+                              type="password"
+                              maxLength={3}
+                              value={cardCvv}
+                              onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
+                              placeholder="•••"
+                              className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none text-center text-gray-800 dark:text-white focus:border-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Method 3: PayPal */}
+                    {selectedPayMethod === 'paypal' && (
+                      <div className="space-y-3 text-right">
+                        <div className="text-center p-2 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100/30">
+                          <span className="text-xs font-black text-blue-700 dark:text-blue-400">بوابة دفع PayPal الآمنة والموثوقة</span>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">البريد الإلكتروني لحساب PayPal:</label>
+                          <input
+                            type="email"
+                            value={paypalEmail}
+                            onChange={(e) => setPaypalEmail(e.target.value)}
+                            placeholder="your-email@paypal.com"
+                            className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2 text-xs font-bold outline-none text-left text-gray-800 dark:text-white focus:border-purple-500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-gray-600 dark:text-gray-300">كلمة المرور:</label>
+                          <input
+                            type="password"
+                            value={paypalPassword}
+                            onChange={(e) => setPaypalPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full bg-white dark:bg-[#120F30] border border-gray-200 dark:border-purple-900/20 rounded-xl px-3 py-2 text-xs font-bold outline-none text-left text-gray-800 dark:text-white focus:border-purple-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Method 4: Coupon Only */}
+                    {selectedPayMethod === 'coupon' && (
+                      <div className="space-y-2 text-right">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold mb-2 leading-relaxed">
+                          إذا كنت تمتلك كود تفعيل هدية أو كوبون ترويجي مميز، يمكنك تفعيل اشتراكك الماسي مجاناً وبنقرة زر واحدة.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-2.5 pt-2">
-                    <button 
+                  {/* Coupon card option input */}
+                  <div className="space-y-1">
+                    <div className="bg-gray-50 dark:bg-purple-950/20 p-2.5 rounded-xl border border-transparent dark:border-purple-900/15 flex items-center justify-between">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="أدخل كود الكوبون الإضافي للتخفيض"
+                        className="bg-transparent border-none text-[10px] font-bold outline-none flex-1 text-right text-gray-800 dark:text-purple-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleApplyCoupon(couponCode)}
+                        className="text-[10px] font-black text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                      >
+                        تطبيق
+                      </button>
+                    </div>
+                    {couponError && <p className="text-[9px] text-red-500 font-bold text-right">{couponError}</p>}
+                    {isCouponApplied && (
+                      <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold text-right">
+                        تم تفعيل الكوبون! خصم {couponDiscount}% بنجاح 🎉
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Pricing Summary Widget */}
+                  <div className="p-3 bg-purple-50/30 dark:bg-[#1d165c]/20 rounded-2xl border border-purple-500/10 space-y-1.5" dir="rtl">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">الاشتراك الأساسي:</span>
+                      <span className="font-extrabold text-gray-850 dark:text-gray-300 font-mono">
+                        {getPlanPrice().original.toFixed(2)} $
+                      </span>
+                    </div>
+                    {isCouponApplied && (
+                      <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                        <span>قيمة الخصم بالكوبون:</span>
+                        <span className="font-extrabold font-mono">
+                          -{getPlanPrice().discount.toFixed(2)} $ ({couponDiscount}%)
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-black border-t border-gray-100 dark:border-purple-900/10 pt-1.5 text-purple-950 dark:text-white">
+                      <span>السعر النهائي للاستراك:</span>
+                      <span className="font-mono text-purple-600 dark:text-purple-400 text-lg">
+                        {getPlanPrice().final.toFixed(2)} $
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Submit / Navigation Buttons */}
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      type="button"
                       onClick={() => setSubStep(2)}
-                      className="py-3.5 px-4 bg-gray-100 dark:bg-gray-800 text-gray-600 rounded-xl font-bold hover:bg-gray-200 cursor-pointer"
+                      className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-600 rounded-xl font-bold hover:bg-gray-200 cursor-pointer"
                     >
                       عودة
                     </button>
-                    <button 
+                    <button
+                      type="button"
                       onClick={handleStartPayment}
                       disabled={isPaying}
-                      className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black shadow shadow-indigo-650/15 text-xs flex items-center justify-center gap-1 cursor-pointer"
+                      className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-black shadow shadow-indigo-650/15 text-xs flex items-center justify-center gap-1 cursor-pointer"
                     >
                       {isPaying ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                          <span>جاري تأكيد المعاملة الآمنة...</span>
+                          <span>جاري تفعيل الاشتراك الماسي الآمن...</span>
                         </>
                       ) : (
-                        <span>تأكيد ودفع الاستراك الآمن</span>
+                        <span>تأكيد وتفعيل العضوية الماسية</span>
                       )}
                     </button>
                   </div>
@@ -1336,23 +1842,27 @@ export default function Dashboard() {
                   <div className="py-4 space-y-4">
                     {/* Animated raindrop/gem mascot smiley face */}
                     <div className="relative w-32 h-32 mx-auto bg-gradient-to-tr from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                      <div className="text-6xl animate-bounce">💧✨</div>
+                      <div className="text-6xl animate-bounce">💎👑</div>
                       {/* Interactive bubbles */}
                       <span className="absolute top-2 right-2 text-md animate-ping">⚡</span>
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="text-xl font-black text-gray-901 dark:text-white">تمت عملية الدفع بنجاح! 🎉</h3>
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold animate-pulse">مرحباً بك كشريك ذهبي ممتاز في معدلي DZ</p>
+                      <h3 className="text-xl font-black text-gray-901 dark:text-white">أهلاً بك في العضوية الماسية! 🎉</h3>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-extrabold animate-pulse">تمت ترقية حسابك بنجاح في تطبيق معدلي DZ</p>
                     </div>
 
                     <p className="text-[11px] text-gray-500 dark:text-purple-300 px-4 leading-relaxed font-semibold">
-                      لقد تم تفعيل اشتراكك الذهبي لمده كاملة بالنجاح. يمكنك الآن الدخول غير المحدود واستخدام الأستاذ الافتراضي دون قيود. واصل تفوقك!
+                      مبروك يا بطل! لقد تم تفعيل العضوية الماسية لـ {selectedPlan === 12 ? 'سنة دراسية كاملة' : `${selectedPlan} أشهر`} بنجاح. استعد للتمتع بجميع المزايا والأستاذ الافتراضي دون قيود!
                     </p>
                   </div>
 
-                  <button 
-                    onClick={() => setIsSubModalOpen(false)}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSubModalOpen(false);
+                      setSubStep(1);
+                    }}
                     className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black py-4 rounded-xl shadow-lg text-xs cursor-pointer"
                   >
                     شكراً لك، هلموا بنا للتعلم!

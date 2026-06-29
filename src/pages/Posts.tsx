@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Award, Filter, Search, Bookmark } from 'lucide-react';
+import { TrendingUp, Award, Filter, Search, Bookmark, AlertTriangle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../lib/firebase';
@@ -18,11 +18,28 @@ export default function Posts() {
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<any>(null);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [filter, setFilter] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
 
   const user = auth.currentUser;
+
+  useEffect(() => {
+    if (!user) return;
+    const isHardcodedAdmin = user.email === 'nacero123@gmail.com' || user.email === 'dzs325105@gmail.com';
+    if (isHardcodedAdmin) {
+      setIsAdmin(true);
+    } else {
+      const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
+        if (docSnap.exists()) {
+          setIsAdmin(docSnap.data().role === 'admin');
+        }
+      });
+      return () => unsubProfile();
+    }
+  }, [user]);
 
   useEffect(() => {
     const q = query(collection(db, 'posts'), orderBy('created_at', 'desc'));
@@ -74,14 +91,17 @@ export default function Posts() {
     return [...posts].sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0)).slice(0, 3);
   }, [posts]);
 
-  const handleDeletePost = async (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المنشور؟')) {
-      try {
-        await deleteDoc(doc(db, 'posts', id));
-      } catch (error) {
-        console.error("Error deleting post:", error);
-        alert("حدث خطأ أثناء حذف المنشور.");
-      }
+  const handleDeletePost = (id: string) => {
+    setPostToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!postToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postToDelete));
+      setPostToDelete(null);
+    } catch (error) {
+      console.error("Error deleting post:", error);
     }
   };
 
@@ -182,8 +202,8 @@ export default function Posts() {
                   key={post.id} 
                   item={post} 
                   onClick={() => console.log('Open', post.id)}
-                  onDelete={post.authorId === user?.uid ? handleDeletePost : undefined}
-                  onEdit={post.authorId === user?.uid ? handleEditPost : undefined}
+                  onDelete={post.authorId === user?.uid || isAdmin ? handleDeletePost : undefined}
+                  onEdit={post.authorId === user?.uid || isAdmin ? handleEditPost : undefined}
                 />
               ))}
             </AnimatePresence>
@@ -247,6 +267,51 @@ export default function Posts() {
         </div>
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postToDelete && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPostToDelete(null)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white dark:bg-[#120F30] rounded-3xl p-6 z-[80] shadow-2xl border border-transparent dark:border-purple-900/10"
+            >
+              <div className="flex flex-col items-center text-center space-y-4" dir="rtl">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mb-2 animate-bounce">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white">حذف المنشور</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium pb-4">
+                  هل أنت متأكد أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setPostToDelete(null)}
+                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors cursor-pointer"
+                  >
+                    حذف
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

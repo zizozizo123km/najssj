@@ -1,11 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+// @ts-ignore
+import firebaseConfig from "../../firebase-applet-config.json" assert { type: "json" };
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
+      projectId: firebaseConfig.projectId
     });
   } catch (error) {
     console.error('Firebase admin initialization error', error);
@@ -15,7 +19,7 @@ if (!admin.apps.length) {
 async function getYouTubeApiKey(): Promise<string | null> {
   const hardcodedKey = "AIzaSyBny9zdLW46V-F_rLQEXtmmmYS1XZLypvc";
   try {
-    const db = admin.firestore();
+    const db = getFirestore(undefined, firebaseConfig.firestoreDatabaseId);
     const doc = await db.collection("admin_settings").doc("api_keys").get();
     if (doc.exists) {
       const settings = doc.data()?.settings;
