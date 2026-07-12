@@ -133,7 +133,7 @@ export default function CourseSubject() {
       return;
     }
 
-    const videoId = video.id?.videoId || video.id;
+    const videoId: string = (typeof video.id === 'string' ? video.id : video.id?.videoId) || '';
     if (!videoId) {
       alert('تعذر تحديد معرف الفيديو.');
       return;

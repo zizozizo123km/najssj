@@ -211,8 +211,10 @@ export default function Profile() {
   const handleSaveSettings = async (newData: any) => {
     if (user && auth.currentUser) {
       try {
-        await setDoc(doc(db, 'profiles', auth.currentUser.uid), {
+        const profileRef = doc(db, 'profiles', auth.currentUser.uid);
+        await setDoc(profileRef, {
           full_name: newData.displayName,
+          email: newData.phone, // In this app, phone is used for email/contact
           avatar_url: newData.photoURL,
           avatar_id: newData.avatarId || null,
           branch: newData.branch,
@@ -220,10 +222,12 @@ export default function Profile() {
           target_score: newData.targetScore || user.targetScore,
           updated_at: serverTimestamp()
         }, { merge: true });
+        
         setIsEditing(false);
-      } catch (err) {
+        setError(null);
+      } catch (err: any) {
         console.error("Update error:", err);
-        setError("فشل تحديث البيانات.");
+        setError("فشل تحديث البيانات: " + (err.message || "خطأ غير معروف"));
       }
     }
   };

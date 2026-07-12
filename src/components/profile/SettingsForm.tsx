@@ -57,7 +57,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
       setFormData(prev => ({ ...prev, photoURL: url, avatarId: 'custom' }));
     } catch (error: any) {
       console.error("Upload error:", error);
-      alert("حدث خطأ أثناء تحميل الصورة. يرجى المحاولة مرة أخرى.");
+      alert("حدث خطأ أثناء تحميل الصورة: " + (error.message || "يرجى المحاولة مرة أخرى."));
     } finally {
       setUploading(false);
     }
@@ -185,7 +185,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
               value={formData.targetScore || ''}
               onChange={(e) => {
                 const val = parseFloat(e.target.value);
-                setFormData({ ...formData, targetScore: isNaN(val) ? 0 : val });
+                setFormData(prev => ({ ...prev, targetScore: isNaN(val) ? 0 : val }));
               }}
               className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none transition-all text-left"
               dir="ltr"
