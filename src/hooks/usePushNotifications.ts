@@ -111,10 +111,10 @@ export function usePushNotifications() {
   const saveToken = async (fcmToken: string) => {
     if (auth.currentUser) {
       try {
-        await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
+        await setDoc(doc(db, 'profiles', auth.currentUser.uid), {
           fcm_token: fcmToken,
           last_token_update: new Date().toISOString()
-        });
+        }, { merge: true });
         console.info('FCM Token saved to Firestore');
       } catch (error) {
         console.error('Error saving fcm token:', error);
@@ -186,9 +186,9 @@ export function usePushNotifications() {
         
         // Track last activity
         try {
-          await updateDoc(doc(db, 'profiles', user.uid), {
+          await setDoc(doc(db, 'profiles', user.uid), {
             last_active_at: new Date().toISOString()
-          });
+          }, { merge: true });
         } catch (e) {
           console.error('Error updating activity:', e);
         }

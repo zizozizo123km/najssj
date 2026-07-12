@@ -146,10 +146,8 @@ service cloud.firestore {
 
     match /profiles/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidProfile(request.resource.data) && 
-                      (request.resource.data.role == 'student' || isAdmin());
-      allow update: if isOwner(userId) && isValidProfile(request.resource.data) && 
-                      (request.resource.data.role == resource.data.role || isAdmin());
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
     }
 
     match /posts/{postId} {

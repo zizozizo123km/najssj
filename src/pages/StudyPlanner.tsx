@@ -86,10 +86,10 @@ export default function StudyPlanner() {
     if (!auth.currentUser || !plan) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
+      await setDoc(doc(db, 'profiles', auth.currentUser.uid), {
         study_plan: plan,
         updated_at: serverTimestamp()
-      });
+      }, { merge: true });
       alert('تم حفظ الجدول في ملفك الشخصي بنجاح! ✅');
     } catch (error) {
       console.error("Error saving plan:", error);

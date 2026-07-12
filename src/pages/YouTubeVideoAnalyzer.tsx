@@ -282,16 +282,16 @@ export default function YouTubeVideoAnalyzer() {
         const currentPoints = profileData.points || 0;
         const currentDiamonds = profileData.diamonds !== undefined ? profileData.diamonds : 15;
         
-        await updateDoc(profileRef, {
+        await setDoc(profileRef, {
           points: currentPoints + 20,
           diamonds: currentDiamonds + 2
-        });
+        }, { merge: true });
       }
 
       alert('تم حفظ ملخص الفيديو والتحليل في ملفك الشخصي وعلامات النشاط بنجاح! 💾✨ وربحت +20 XP و +2 جوهرة! 💎');
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error saving summary to Firestore:", e);
-      alert('حدث خطأ أثناء حفظ التحليل في قاعدة البيانات.');
+      alert('حدث خطأ أثناء حفظ التحليل في قاعدة البيانات: ' + (e.message || 'خطأ غير معروف'));
     }
   };
 

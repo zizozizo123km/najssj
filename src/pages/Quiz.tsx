@@ -229,11 +229,11 @@ export default function Quiz() {
           else if (newPoints >= 5000) newLevel = 'خبير';
           else if (newPoints >= 2000) newLevel = 'متقدم';
 
-          await updateDoc(profileRef, {
+          await setDoc(profileRef, {
             points: Math.round(newPoints),
             diamonds: newDiamonds,
             level: newLevel
-          });
+          }, { merge: true });
         }
 
       } catch (e) {

@@ -89,22 +89,22 @@ export default function Dashboard() {
             if (pData.diamonds !== undefined) {
               setDiamonds(pData.diamonds);
             } else {
-              await updateDoc(doc(db, 'profiles', user.uid), { diamonds: 15 });
+              await setDoc(doc(db, 'profiles', user.uid), { diamonds: 15 }, { merge: true });
             }
             if (pData.streak_days !== undefined) {
               setStreakDays(pData.streak_days);
             } else {
-              await updateDoc(doc(db, 'profiles', user.uid), { streak_days: 1 });
+              await setDoc(doc(db, 'profiles', user.uid), { streak_days: 1 }, { merge: true });
             }
 
             // Streak check logic using local timezone date (real days)
             const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
             const lastActive = pData.last_active_date;
             if (!lastActive) {
-              await updateDoc(doc(db, 'profiles', user.uid), {
+              await setDoc(doc(db, 'profiles', user.uid), {
                 streak_days: 1,
                 last_active_date: today
-              });
+              }, { merge: true });
             } else if (lastActive !== today) {
               const [y1, m1, d1] = lastActive.split('-').map(Number);
               const [y2, m2, d2] = today.split('-').map(Number);
@@ -118,17 +118,17 @@ export default function Dashboard() {
               if (diffDays === 1) {
                 const newStreak = (pData.streak_days || 0) + 1;
                 const currentDiamonds = pData.diamonds !== undefined ? pData.diamonds : 15;
-                await updateDoc(doc(db, 'profiles', user.uid), {
+                await setDoc(doc(db, 'profiles', user.uid), {
                   streak_days: newStreak,
                   last_active_date: today,
                   diamonds: currentDiamonds + 2
-                });
+                }, { merge: true });
                 alert(`🔥 ممتاز! حافظت على سلسلة دراستك لليوم الـ ${newStreak} على التوالي! حصلت على جوهرتين إضافيتين! 💎💎`);
               } else if (diffDays > 1) {
-                await updateDoc(doc(db, 'profiles', user.uid), {
+                await setDoc(doc(db, 'profiles', user.uid), {
                   streak_days: 1,
                   last_active_date: today
-                });
+                }, { merge: true });
               }
             }
           }
@@ -245,10 +245,10 @@ export default function Dashboard() {
       // Auto-reset claimed missions list if day transitioned
       if (claimedMissionsDate !== todayStr && userId) {
         claimedMissions = [];
-        await updateDoc(doc(db, 'profiles', userId), {
+        await setDoc(doc(db, 'profiles', userId), {
           claimed_missions: [],
           claimed_missions_date: todayStr
-        }).catch(err => console.error("Error updating claimed missions reset:", err));
+        }, { merge: true }).catch(err => console.error("Error updating claimed missions reset:", err));
       }
 
       // Map level to target multipliers
@@ -431,12 +431,12 @@ export default function Dashboard() {
 
         const nextDiamonds = (profile?.diamonds !== undefined ? profile.diamonds : 15) + diamondBonus;
 
-        await updateDoc(doc(db, 'profiles', currentUserId), {
+        await setDoc(doc(db, 'profiles', currentUserId), {
           points: addedPoints,
           diamonds: nextDiamonds,
           claimed_missions: nextClaimed,
           claimed_missions_date: todayStr
-        });
+        }, { merge: true });
         
         setDiamonds(nextDiamonds);
         alert(`🎁 مبروك! لقد استلمت ${xpReward} XP و +${diamondBonus} جوهرة إضافية! 💎✨`);
@@ -571,9 +571,9 @@ export default function Dashboard() {
     // Update state & save to firestore
     if (currentUserId) {
       try {
-        await updateDoc(doc(db, 'profiles', currentUserId), {
+        await setDoc(doc(db, 'profiles', currentUserId), {
           is_premium: true
-        });
+        }, { merge: true });
       } catch (e) {
         console.error("Error upgrading to Premium:", e);
       }

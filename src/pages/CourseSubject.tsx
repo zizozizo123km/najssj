@@ -133,7 +133,12 @@ export default function CourseSubject() {
       return;
     }
 
-    const videoId = video.id.videoId;
+    const videoId = video.id?.videoId || video.id;
+    if (!videoId) {
+      alert('تعذر تحديد معرف الفيديو.');
+      return;
+    }
+
     if (completedVideoIds.includes(videoId)) {
       alert('لقد أكملت هذا الدرس بالفعل وحصلت على مكافأتك!');
       return;
@@ -145,15 +150,16 @@ export default function CourseSubject() {
       await addDoc(collection(db, 'watched_videos'), {
         user_id: user.uid,
         video_id: videoId,
-        title: video.snippet.title,
-        channel: video.snippet.channelTitle || '',
-        thumbnail: video.snippet.thumbnails.high.url || '',
+        title: video.snippet?.title || 'عنوان غير معروف',
+        channel: video.snippet?.channelTitle || '',
+        thumbnail: video.snippet?.thumbnails?.high?.url || video.snippet?.thumbnails?.medium?.url || '',
         created_at: serverTimestamp()
       });
 
       // 2. Update profiles document with +20 XP points and +2 diamonds
       const profileRef = doc(db, 'profiles', user.uid);
       const profileSnap = await getDoc(profileRef);
+      
       let nextPoints = userPoints + 20;
       let nextDiamonds = userDiamonds + 2;
 
@@ -163,10 +169,10 @@ export default function CourseSubject() {
         nextDiamonds = (pData.diamonds !== undefined ? pData.diamonds : 15) + 2;
       }
 
-      await updateDoc(profileRef, {
+      await setDoc(profileRef, {
         points: nextPoints,
         diamonds: nextDiamonds
-      });
+      }, { merge: true });
 
       // 3. Update local states
       setCompletedVideoIds(prev => [...prev, videoId]);
@@ -174,9 +180,9 @@ export default function CourseSubject() {
       setUserDiamonds(nextDiamonds);
 
       alert('🎉 مبروك! لقد أكملت درس اليوم بنجاح وربحت +20 XP و +2 جوهرة 💎!');
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error completing lesson:", e);
-      alert('حدث خطأ أثناء حفظ تقدمك الدراسي.');
+      alert('حدث خطأ أثناء حفظ تقدمك الدراسي: ' + (e.message || 'خطأ غير معروف'));
     } finally {
       setCompleting(false);
     }

@@ -211,7 +211,7 @@ export default function Profile() {
   const handleSaveSettings = async (newData: any) => {
     if (user && auth.currentUser) {
       try {
-        await updateDoc(doc(db, 'profiles', auth.currentUser.uid), {
+        await setDoc(doc(db, 'profiles', auth.currentUser.uid), {
           full_name: newData.displayName,
           avatar_url: newData.photoURL,
           avatar_id: newData.avatarId || null,
@@ -219,7 +219,7 @@ export default function Profile() {
           favorite_subjects: newData.favoriteSubjects,
           target_score: newData.targetScore || user.targetScore,
           updated_at: serverTimestamp()
-        });
+        }, { merge: true });
         setIsEditing(false);
       } catch (err) {
         console.error("Update error:", err);
