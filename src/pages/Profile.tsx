@@ -6,7 +6,7 @@ import {
   ShieldCheck, Zap, Target, Settings as SettingsIcon, Calendar, 
   Moon, Sun, Clock, Trophy, CheckCircle, BarChart2
 } from 'lucide-react';
-import { auth, db, doc, updateDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
+import { auth, db, doc, setDoc, onSnapshot, signOut, serverTimestamp, collection, query, where, getDocs } from '../lib/firebase';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import StatsCard from '../components/profile/StatsCard';
 import ProgressCard from '../components/profile/ProgressCard';

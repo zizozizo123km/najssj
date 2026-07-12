@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Type } from "@google/genai";
 import { getGeminiConfig } from '../lib/gemini';
-import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where, updateDoc } from '../lib/firebase';
+import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, onSnapshot, getDocs, query, where, updateDoc, setDoc } from '../lib/firebase';
 import { BAC_SUBJECTS, BAC_CHAPTERS, BAC_BRANCHES } from '../data/baccalaureate';
 
 type View = 'subjects' | 'chapters' | 'mode' | 'quiz' | 'result';

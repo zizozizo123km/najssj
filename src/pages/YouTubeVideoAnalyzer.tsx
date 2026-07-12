@@ -7,7 +7,7 @@ import VideoList from '../components/youtube/VideoList';
 import VideoPlayer from '../components/youtube/VideoPlayer';
 import VideoSummary from '../components/youtube/VideoSummary';
 import QuizSection from '../components/youtube/QuizSection';
-import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from '../lib/firebase';
+import { auth, db, collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc } from '../lib/firebase';
 
 interface Video {
   id: string;

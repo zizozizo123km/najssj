@@ -128,7 +128,7 @@ export default function SettingsForm({ user, onSave, onCancel }: SettingsFormPro
 
             <AvatarGallery 
               selectedAvatar={formData.photoURL} 
-              onSelect={(url, id) => setFormData({ ...formData, photoURL: url, avatarId: id })} 
+              onSelect={(url, id) => setFormData(prev => ({ ...prev, photoURL: url, avatarId: id }))} 
             />
           </div>
         </div>

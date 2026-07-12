@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Calendar, Clock, BookOpen, Save, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
 import { getGeminiConfig } from '../lib/gemini';
 import { BAC_BRANCHES, BAC_SUBJECTS } from '../data/baccalaureate';
-import { auth, db, doc, onSnapshot, updateDoc, serverTimestamp } from '../lib/firebase';
+import { auth, db, doc, onSnapshot, setDoc, serverTimestamp } from '../lib/firebase';
 
 const DAYS_MAP: Record<string, string> = {
   'Saturday': 'السبت',

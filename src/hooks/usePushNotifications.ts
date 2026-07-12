@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { messaging, auth, db, doc, updateDoc } from '../lib/firebase';
+import { messaging, auth, db, doc, setDoc } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getToken, onMessage } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';

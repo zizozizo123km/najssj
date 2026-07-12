@@ -7,7 +7,7 @@ import {
   Gem, Check, ArrowRight, ShieldAlert, Award
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit, updateDoc, addDoc } from '../lib/firebase';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, onAuthStateChanged, getDocs, where, limit, updateDoc, setDoc, addDoc } from '../lib/firebase';
 import FeedCard from '../components/feed/FeedCard';
 import Loader from '../components/feed/Loader';
 import CreatePostModal from '../components/feed/CreatePostModal';
