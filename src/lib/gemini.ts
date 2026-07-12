@@ -2,6 +2,34 @@ import { GoogleGenAI } from "@google/genai";
 import { db, doc, getDoc, updateDoc } from './firebase';
 
 export async function getGeminiConfig() {
+  let customApiKey: string | undefined;
+  let customModel = "gemini-1.5-flash";
+  let activeIndex = 0;
+  let allSettings: any = {};
+
+  try {
+    const docRef = doc(db, 'admin_settings', 'api_keys');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const settings = data.settings;
+      if (settings?.gemini && Array.isArray(settings.gemini) && settings.gemini.length > 0) {
+        activeIndex = settings.active_index || 0;
+        if (activeIndex >= settings.gemini.length) {
+            activeIndex = 0;
+        }
+        const selected = settings.gemini[activeIndex];
+        customApiKey = selected.api_key;
+        if (selected.model_name) {
+            customModel = selected.model_name;
+        }
+        allSettings = settings;
+      }
+    }
+  } catch (error) {
+    console.warn("Could not fetch custom Gemini settings from client:", error);
+  }
+
   // Return a mocked secure client that proxies all requests to the backend /api/gemini endpoint
   const mockClient = {
     models: {
@@ -12,7 +40,7 @@ export async function getGeminiConfig() {
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify(args)
+            body: JSON.stringify({ ...args, customApiKey })
           });
           if (!res.ok) {
             const errData = await res.json();
@@ -20,7 +48,27 @@ export async function getGeminiConfig() {
           }
           return await res.json();
         } catch (error: any) {
-          console.error("Proxied generateContent error:", error);
+          console.warn("Proxied generateContent error, attempting OpenRouter fallback:", error);
+          if (allSettings && allSettings.openrouter && allSettings.openrouter.length > 0) {
+            try {
+              // Create a simplified prompt from contents
+              let prompt = "";
+              if (args.contents && Array.isArray(args.contents)) {
+                 prompt = args.contents.map((c: any) => c.parts.map((p: any) => p.text).join(" ")).join("\n");
+              } else if (typeof args.contents === "string") {
+                 prompt = args.contents;
+              }
+              const systemInstruction = args.config?.systemInstruction || "";
+              
+              // Only fallback if we have a prompt
+              if (prompt) {
+                 const fallbackText = await askOpenRouter(prompt, systemInstruction, allSettings);
+                 return { text: fallbackText };
+              }
+            } catch (fallbackError) {
+              console.error("OpenRouter fallback also failed:", fallbackError);
+            }
+          }
           throw error;
         }
       }
@@ -29,7 +77,7 @@ export async function getGeminiConfig() {
       create: (chatArgs: any) => {
         const history: any[] = chatArgs?.history || [];
         const systemInstruction = chatArgs?.config?.systemInstruction;
-        const model = chatArgs?.model;
+        const model = chatArgs?.model || customModel;
         
         return {
           sendMessage: async (sendArgs: any) => {
@@ -55,9 +103,10 @@ export async function getGeminiConfig() {
                   "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                  model: model || "gemini-1.5-flash",
+                  model: model,
                   contents,
-                  config
+                  config,
+                  customApiKey
                 })
               });
               
@@ -84,9 +133,10 @@ export async function getGeminiConfig() {
 
   return {
     client: mockClient as any,
-    model: "gemini-1.5-flash",
-    activeIndex: 0,
-    allSettings: {}
+    model: customModel,
+    activeIndex,
+    allSettings,
+    customApiKey
   };
 }
 

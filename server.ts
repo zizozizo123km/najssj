@@ -160,16 +160,16 @@ async function startServer() {
         }
       }
     } catch (error) {
-      console.error("Error reading Gemini API key on backend:", error);
+      console.warn("Error reading custom Gemini API key from Firestore, falling back to system key:", error);
     }
     return process.env.GEMINI_API_KEY || null;
   }
 
   // Secure Gemini API Proxy
   app.post("/api/gemini", async (req, res) => {
-    const { model, contents, config } = req.body;
+    const { model, contents, config, customApiKey } = req.body;
     
-    let apiKey = await getGeminiApiKey();
+    let apiKey = customApiKey || await getGeminiApiKey();
     if (!apiKey) {
       return res.status(500).json({ error: "Gemini API key is not configured" });
     }
@@ -185,7 +185,10 @@ async function startServer() {
 
     try {
       const response = await runGenerate(apiKey);
-      res.json(response);
+      res.json({
+        ...response,
+        text: response.text
+      });
     } catch (error: any) {
       console.error("Gemini API Error with primary key:", error);
       
@@ -194,7 +197,10 @@ async function startServer() {
         console.warn("Attempting secure fallback to system GEMINI_API_KEY...");
         try {
           const response = await runGenerate(process.env.GEMINI_API_KEY);
-          return res.json(response);
+          return res.json({
+            ...response,
+            text: response.text
+          });
         } catch (fallbackError: any) {
           console.error("Gemini fallback API Error:", fallbackError);
         }
@@ -209,12 +215,12 @@ async function startServer() {
 
   // Text to Speech (TTS) API
   app.post("/api/tts", async (req, res) => {
-    const { text, voice } = req.body;
+    const { text, voice, customApiKey } = req.body;
     if (!text) {
       return res.status(400).json({ error: "Text is required" });
     }
     
-    let apiKey = await getGeminiApiKey();
+    let apiKey = customApiKey || await getGeminiApiKey();
     if (!apiKey) {
       return res.status(500).json({ error: "Gemini API key is not configured" });
     }

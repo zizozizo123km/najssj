@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { User, Bot, Save, Volume2, Square, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { getGeminiConfig } from '../../lib/gemini';
 
 interface Message {
   id: string;
@@ -58,12 +59,15 @@ export default function MessageBubble({ message, onSave, autoPlay }: MessageBubb
         .replace(/:\s*all/g, '')
         .trim();
 
+      const { customApiKey } = await getGeminiConfig();
+
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           text: cleanText,
-          voice: 'kore' 
+          voice: 'kore',
+          customApiKey
         }),
       });
 
