@@ -358,9 +358,8 @@ export default function CourseSubject() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {videos.map((video) => {
                     const isCompleted = completedVideoIds.includes(video.id.videoId);
-                    const isLongId = video.id.videoId.length % 2 === 0;
-                    const progressVal = isCompleted ? 100 : (isLongId ? 65 : 42);
-                    const strokeColor = isCompleted ? 'bg-emerald-500' : (isLongId ? 'bg-emerald-500' : 'bg-blue-600');
+                    const progressVal = isCompleted ? 100 : 0;
+                    const strokeColor = isCompleted ? 'bg-emerald-500' : 'bg-blue-600';
 
                     return (
                       <motion.div 

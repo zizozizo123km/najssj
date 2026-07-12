@@ -43,11 +43,21 @@ export default function Quiz() {
   useEffect(() => {
     let timer: any;
     if (view === 'quiz' && timeLeft !== null && timeLeft > 0) {
-      timer = setInterval(() => setTimeLeft(prev => prev! - 1), 1000);
-    } else if (timeLeft === 0 && view === 'quiz') {
-      finishQuiz();
+      timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev === null) return null;
+          if (prev <= 1) return 0;
+          return prev - 1;
+        });
+      }, 1000);
     }
     return () => clearInterval(timer);
+  }, [view, timeLeft !== null]);
+
+  useEffect(() => {
+    if (view === 'quiz' && timeLeft === 0) {
+      finishQuiz();
+    }
   }, [timeLeft, view]);
 
   useEffect(() => {

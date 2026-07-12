@@ -168,6 +168,7 @@ async function startServer() {
   // Secure Gemini API Proxy
   app.post("/api/gemini", async (req, res) => {
     const { model, contents, config, customApiKey } = req.body;
+    console.log("Gemini API Proxy requested model:", model);
     
     let apiKey = customApiKey || await getGeminiApiKey();
     if (!apiKey) {
